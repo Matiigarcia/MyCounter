@@ -3,7 +3,7 @@
 // ============================================================
 
 const App = {
-  VERSION: '1.0.16',
+  VERSION: '1.0.17',
   currentPage: 'dashboard',
   currentMonth: new Date(),
   editingTransaction: null,

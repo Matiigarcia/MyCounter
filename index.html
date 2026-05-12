@@ -509,7 +509,11 @@
   <!-- Register Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Error:', err));
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+        .then(reg => {
+          reg.update(); // Force check for update on every load
+        })
+        .catch(err => console.log('SW Error:', err));
     }
   </script>
 </body>
