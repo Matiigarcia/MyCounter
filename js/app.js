@@ -3,7 +3,7 @@
 // ============================================================
 
 const App = {
-  VERSION: '1.0.19',
+  VERSION: '1.0.20',
   currentPage: 'dashboard',
   currentMonth: new Date(),
   editingTransaction: null,
@@ -189,9 +189,8 @@ const App = {
         btn.classList.add('active', isExpense ? 'expense-active' : 'income-active');
         document.getElementById('modalType').value = type;
         
-        // Show/hide installment fields
-        const instFields = document.getElementById('installmentFields');
-        if (instFields) instFields.style.display = isExpense ? 'block' : 'none';
+        // Show/hide installment fields based on category
+        this.updateInstallmentFieldsVisibility();
         
         // Income specific logic
         document.getElementById('addSalaryBtn').style.display = isExpense ? 'none' : 'block';
@@ -217,6 +216,7 @@ const App = {
       document.querySelectorAll('.cat-item').forEach(c => c.classList.remove('selected'));
       item.classList.add('selected');
       document.getElementById('modalCategory').value = item.dataset.cat;
+      this.updateInstallmentFieldsVisibility();
     });
 
     // Save transaction
@@ -256,8 +256,7 @@ const App = {
       });
     });
 
-    // Voice button (backup)
-    document.getElementById('voiceBtn').addEventListener('click', () => Voice.toggle());
+
 
     // Onboarding
     document.getElementById('onboardStart').addEventListener('click', () => this.completeOnboarding());
@@ -763,7 +762,17 @@ const App = {
 
     // Render categories
     this.renderCategoryGrid();
+    this.updateInstallmentFieldsVisibility();
     this.resetAmounts();
+  },
+
+  updateInstallmentFieldsVisibility() {
+    const type = document.getElementById('modalType').value;
+    const cat = document.getElementById('modalCategory').value;
+    const instFields = document.getElementById('installmentFields');
+    if (instFields) {
+      instFields.style.display = (type === 'expense' && cat === 'credit_card') ? 'block' : 'none';
+    }
   },
 
   addAmountToList() {
