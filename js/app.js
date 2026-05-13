@@ -3,7 +3,7 @@
 // ============================================================
 
 const App = {
-  VERSION: '1.0.21',
+  VERSION: '1.0.22',
   currentPage: 'dashboard',
   currentMonth: new Date(),
   editingTransaction: null,
@@ -365,11 +365,11 @@ const App = {
       return `<div class="tx-item" data-id="${tx.id}">
         <div class="tx-icon" style="background:${cat.color}20">${cat.icon}</div>
         <div class="tx-info">
+          <div class="tx-info-top">
+            <div class="tx-date">${Utils.formatDate(tx.date)}</div>
+            <div class="tx-amount ${tx.type}">${sign}${Utils.formatMoney(tx.amount)}</div>
+          </div>
           <div class="tx-desc">${label}</div>
-        </div>
-        <div class="tx-right" style="margin-left: 10px;">
-          <div class="tx-amount ${tx.type}">${sign}${Utils.formatMoney(tx.amount)}</div>
-          <div class="tx-date">${Utils.formatDate(tx.date)}</div>
         </div>
         <div class="tx-actions">
           <button class="tx-action-btn" onclick="App.editTransaction('${tx.id}')" title="${Utils.t('edit')}">✏️</button>
