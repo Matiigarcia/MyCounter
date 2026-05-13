@@ -9,6 +9,13 @@ const DB = {
 
   // ---- Initialize Database ----
   async init() {
+    // Request persistent storage to prevent automatic eviction
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist().then(granted => {
+        console.log('Storage persisted:', granted);
+      });
+    }
+
     await this.migrate();
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);

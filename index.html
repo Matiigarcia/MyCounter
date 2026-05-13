@@ -256,7 +256,7 @@
     <div class="settings-group">
       <div class="settings-group-title">Acerca de</div>
       <div class="setting-item" onclick="App.showAbout()" style="cursor:pointer">
-        <div class="setting-left"><span class="setting-icon">📱</span><div><div class="setting-label">CuentasClaras</div><div class="setting-desc" id="appVersionDisplay">Versión 1.0.22 — Tu contador personal</div></div></div>
+        <div class="setting-left"><span class="setting-icon">📱</span><div><div class="setting-label">CuentasClaras</div><div class="setting-desc" id="appVersionDisplay">Versión 1.0.23 — Tu contador personal</div></div></div>
         <span class="setting-value">→</span>
       </div>
     </div>
@@ -468,7 +468,11 @@
       <div class="help-section" style="margin-top:20px; border-top:1px solid var(--border); padding-top:15px;">
         <h3>🔒 Privacidad Total</h3>
         <p>Tus datos son <strong>100% privados</strong>. No tenemos servidores ni acceso a tu información.</p>
-        <p>Todo se guarda en la base de datos interna de tu navegador (IndexedDB). Te recomendamos <strong>Exportar Backup</strong> periódicamente desde Ajustes para no perder tus datos si cambias de equipo.</p>
+        <p>Todo se guarda en la base de datos interna de tu navegador (IndexedDB). Te recomendamos <strong>Exportar Backup</strong> periódicamente desde Ajustes.</p>
+        <div style="background: rgba(255,107,107,0.15); border: 1px solid rgba(255,107,107,0.3); padding: 10px; border-radius: 8px; margin-top: 10px;">
+          <strong style="color: var(--red); display: block; margin-bottom: 4px;">⚠️ ADVERTENCIA CRÍTICA</strong>
+          <span style="font-size: 0.8rem; color: var(--text-secondary);">Si borras el historial de tu navegador y seleccionas "Borrar cookies y datos de sitios", <strong>PERDERÁS TODOS TUS DATOS</strong>. La app no puede evitar esto. Por favor, realiza backups en formato JSON (desde Ajustes) periódicamente para estar seguro.</span>
+        </div>
       </div>
 
       <button class="btn-primary" style="margin-top:20px" onclick="document.getElementById('helpModalOverlay').classList.remove('open')">Entendido</button>
@@ -484,7 +488,7 @@
       <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:20px;">Tu contador personal y privado.</p>
       
       <div style="text-align:left; background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; margin-bottom:20px;">
-        <p style="font-size:0.85rem; margin-bottom:8px;"><strong>Versión:</strong> <span class="app-version-txt">1.0.22</span></p>
+        <p style="font-size:0.85rem; margin-bottom:8px;"><strong>Versión:</strong> <span class="app-version-txt">1.0.23</span></p>
         <p style="font-size:0.85rem; margin-bottom:8px;"><strong>Objetivo:</strong> Ayudarte a tener una relación sana con tu dinero mediante el registro simple de gastos.</p>
         <p style="font-size:0.85rem;"><strong>Desarrollo:</strong> Creada para ser la herramienta más rápida y privada de control financiero personal.</p>
       </div>
@@ -507,8 +511,35 @@
       navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
         .then(reg => {
           reg.update(); // Force check for update on every load
+          
+          // Check for updates periodically and on visibility change
+          setInterval(() => reg.update(), 1000 * 60 * 60);
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') reg.update();
+          });
+
+          // Listen for new service worker installation
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                const overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-primary, #0F0F1A);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#fff;font-family:sans-serif;';
+                overlay.innerHTML = '<h2 style="margin-bottom:10px">Actualizando App 🚀</h2><p style="color:#8B8BA7">Optimizando la nueva versión...</p>';
+                document.body.appendChild(overlay);
+                setTimeout(() => window.location.reload(true), 1500);
+              }
+            });
+          });
         })
         .catch(err => console.log('SW Error:', err));
+
+      let refreshing;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload(true);
+      });
     }
   </script>
 </body>
