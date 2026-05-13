@@ -361,11 +361,11 @@ const App = {
     el.innerHTML = transactions.map(tx => {
       const cat = Utils.getCategoryById(tx.category);
       const sign = tx.type === 'income' ? '+' : '-';
+      const label = tx.description || Utils.getCategoryName(cat);
       return `<div class="tx-item" data-id="${tx.id}">
         <div class="tx-icon" style="background:${cat.color}20">${cat.icon}</div>
         <div class="tx-info">
-          <div class="tx-category">${Utils.getCategoryName(cat)}</div>
-          <div class="tx-desc">${tx.description || ''}</div>
+          <div class="tx-desc">${label}</div>
         </div>
         <div class="tx-right" style="margin-left: 10px;">
           <div class="tx-amount ${tx.type}">${sign}${Utils.formatMoney(tx.amount)}</div>

@@ -144,8 +144,14 @@ a { color: inherit; text-decoration: none; }
 .tx-item:last-child { border-bottom: none; }
 .tx-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
 .tx-info { flex: 1; min-width: 0; padding-right: 12px; }
-.tx-category { font-size: 0.85rem; font-weight: 600; }
-.tx-desc { font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.tx-desc { 
+  font-size: 0.85rem; 
+  color: var(--text-primary); 
+  font-weight: 500;
+  white-space: normal; 
+  word-break: break-word; 
+  line-height: 1.3;
+}
 .tx-right { text-align: right; flex-shrink: 0; min-width: 90px; margin-left: 8px; }
 .tx-amount { font-size: 0.95rem; font-weight: 700; white-space: nowrap; }
 .tx-amount.income { color: var(--green); }
