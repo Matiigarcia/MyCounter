@@ -28,15 +28,16 @@
 }
 
 [data-theme="light"] {
-  --bg-primary: #F0F2F8;
+  --bg-primary: #F5F7FB;
   --bg-secondary: #FFFFFF;
-  --bg-card: rgba(255,255,255,0.9);
-  --bg-glass: rgba(255,255,255,0.7);
-  --text-primary: #1A1A2E;
-  --text-secondary: #6B6B8A;
-  --text-muted: #9B9BB5;
-  --border: rgba(0,0,0,0.08);
-  --shadow: 0 8px 32px rgba(0,0,0,0.08);
+  --bg-card: rgba(255, 255, 255, 0.9);
+  --bg-glass: rgba(240, 244, 248, 0.7);
+  --text-primary: #102A43;
+  --text-secondary: #486581;
+  --text-muted: #829AB1;
+  --border: rgba(16, 42, 67, 0.08);
+  --shadow: 0 10px 30px rgba(16, 42, 67, 0.08);
+  --accent: #5A51E6; /* Slightly deeper violet for better contrast in light mode */
 }
 
 /* ===== RESET ===== */
