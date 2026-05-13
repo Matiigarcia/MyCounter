@@ -469,16 +469,17 @@ const App = {
     for (const cardName in grouped) {
       const g = grouped[cardName];
       const isPaid = txsThisMonth.some(t => t.category === 'credit_card' && t.description.includes(`Pago Tarjeta - ${cardName}`));
+      const cardId = `card-details-${cardName.replace(/\s+/g, '-')}`;
       
       html += `
         <div class="card" style="margin-bottom: 16px; padding: 16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
-            <div>
-              <h3 style="font-size: 1.1rem; font-weight: 700; margin: 0;">💳 ${g.name}</h3>
+            <div onclick="App.toggleCardDetails('${cardId}')" style="cursor:pointer; flex:1">
+              <h3 style="font-size: 1.1rem; font-weight: 700; margin: 0;">💳 ${g.name} <span style="font-size:0.7rem; color:var(--text-muted)">▼</span></h3>
               <div style="font-size: 0.85rem; color: var(--text-secondary);">Deuda: ${Utils.formatMoney(g.totalDebt)}</div>
             </div>
             <div style="text-align: right;">
-              <div style="font-size: 0.85rem; color: var(--text-secondary);">A pagar este mes</div>
+              <div style="font-size: 0.85rem; color: var(--text-secondary);">${isPaid ? 'A pagar el mes que viene' : 'A pagar este mes'}</div>
               <div style="font-size: 1.1rem; font-weight: 700; color: var(--yellow);">${Utils.formatMoney(g.totalMonthly)}</div>
               <div style="font-size: 0.75rem; color: ${isPaid ? 'var(--green)' : 'var(--red)'}; font-weight: 600;">
                 ${isPaid ? '✅ PAGADO' : '⏳ ADEUDA'}
@@ -488,7 +489,7 @@ const App = {
           <button class="btn-primary" style="margin-bottom: 16px; padding: 10px;" onclick="App.openCardPayModal('${g.name}', ${g.totalMonthly}, ${isPaid})">
             Pagar Tarjeta
           </button>
-          <div style="display:flex; flex-direction:column; gap: 8px;">
+          <div id="${cardId}" style="display:none; flex-direction:column; gap: 8px;">
             ${g.items.map(inst => {
               const isSub = !!inst.isSubscription;
               const remaining = isSub ? '∞' : (inst.installmentCount - inst.paidInstallments);
@@ -517,6 +518,18 @@ const App = {
       `;
     }
     listEl.innerHTML = html;
+  },
+
+  toggleCardDetails(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const isHidden = el.style.display === 'none';
+    el.style.display = isHidden ? 'flex' : 'none';
+    
+    // Rotate chevron
+    const cardHeader = el.previousElementSibling.previousElementSibling;
+    const chevron = cardHeader.querySelector('span');
+    if (chevron) chevron.textContent = isHidden ? '▲' : '▼';
   },
 
   openCardPayModal(cardName, totalMonthly, isPaid) {
