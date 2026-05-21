@@ -228,17 +228,22 @@
     </div>
 
     <div class="settings-group">
-      <div class="settings-group-title" data-i18n="smartCategorization">Categorización Inteligente</div>
-      <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:12px;" data-i18n="learningDesc">La app aprende de tus registros para categorizar correctamente en el futuro.</div>
-      
-      <div id="settingsRulesList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px; max-height:220px; overflow-y:auto; border-radius: 8px;"></div>
-      
-      <div style="background:rgba(255,255,255,0.02); padding:14px; border-radius:var(--radius-sm); border:1px solid var(--border); display:flex; flex-direction:column; gap:10px;">
-        <div style="font-size:0.85rem; font-weight:600; color:var(--text-primary);" data-i18n="addRuleTitle">Agregar regla manual</div>
-        <div style="display:flex; gap:8px; flex-wrap: wrap;">
-          <input type="text" id="newRuleKeyword" class="form-input" placeholder="Claro, Coto, etc." data-i18n-placeholder="keywordPlaceholder" style="flex:1; min-width: 120px; padding: 10px 12px; font-size: 0.85rem;">
-          <select id="newRuleCategory" class="form-input" style="flex:1; min-width: 120px; padding: 10px 12px; font-size: 0.85rem; background: var(--bg-glass); color: var(--text-primary);"></select>
-          <button class="btn-primary" style="width:100%; padding:10px; font-size:0.85rem;" onclick="App.addCustomRuleFromSettings()" data-i18n="addRuleBtn">+ Agregar Regla</button>
+      <div class="settings-group-title" onclick="App.toggleSettingsGroup('smartCategorizationPanel')" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;">
+        <span data-i18n="smartCategorization">Categorización Inteligente</span>
+        <span class="settings-chevron" style="font-size:0.7rem; color:var(--text-secondary); transition: transform 0.3s ease;">▼</span>
+      </div>
+      <div id="smartCategorizationPanel" style="display:none; flex-direction:column;">
+        <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px; margin-bottom:12px;" data-i18n="learningDesc">La app aprende de tus registros para categorizar correctamente en el futuro.</div>
+        
+        <div id="settingsRulesList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px; max-height:220px; overflow-y:auto; border-radius: 8px;"></div>
+        
+        <div style="background:rgba(255,255,255,0.02); padding:14px; border-radius:var(--radius-sm); border:1px solid var(--border); display:flex; flex-direction:column; gap:10px;">
+          <div style="font-size:0.85rem; font-weight:600; color:var(--text-primary);" data-i18n="addRuleTitle">Agregar regla manual</div>
+          <div style="display:flex; gap:8px; flex-wrap: wrap;">
+            <input type="text" id="newRuleKeyword" class="form-input" placeholder="Claro, Coto, etc." data-i18n-placeholder="keywordPlaceholder" style="flex:1; min-width: 120px; padding: 10px 12px; font-size: 0.85rem;">
+            <select id="newRuleCategory" class="form-input" style="flex:1; min-width: 120px; padding: 10px 12px; font-size: 0.85rem; background: var(--bg-glass); color: var(--text-primary);"></select>
+            <button class="btn-primary" style="width:100%; padding:10px; font-size:0.85rem;" onclick="App.addCustomRuleFromSettings()" data-i18n="addRuleBtn">+ Agregar Regla</button>
+          </div>
         </div>
       </div>
     </div>

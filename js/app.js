@@ -1440,6 +1440,22 @@ const App = {
       Utils.vibrate([10]);
     }
   },
+
+  toggleSettingsGroup(id) {
+    const panel = document.getElementById(id);
+    if (!panel) return;
+    
+    const isHidden = !panel.style.display || panel.style.display === 'none';
+    panel.style.display = isHidden ? 'flex' : 'none';
+    
+    // Rotate chevron
+    const header = panel.previousElementSibling;
+    const chevron = header ? header.querySelector('.settings-chevron') : null;
+    if (chevron) {
+      chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+    Utils.vibrate([8]);
+  },
 };
 
 // Boot
