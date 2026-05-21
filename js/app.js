@@ -8,6 +8,8 @@ const App = {
   currentMonth: new Date(),
   editingTransaction: null,
   pendingAmounts: [],
+  historyViewMode: 'list',
+  learningRules: {},
 
   async init() {
     this.checkVersion();
@@ -17,6 +19,21 @@ const App = {
     Utils.setCurrency(settings.currency || 'ARS');
     document.documentElement.setAttribute('data-theme', settings.theme || 'dark');
 
+    // Load custom learning rules into memory
+    this.learningRules = {};
+    try {
+      const rules = await DB.getAllLearningRules();
+      if (rules) {
+        rules.forEach(r => {
+          this.learningRules[r.keyword] = r.category;
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load learning rules:', err);
+    }
+
+    this.applyTranslations();
+    this.populateRulesCategorySelect();
     this.populateCardSelects();
 
     if (!localStorage.getItem('cc_onboarded')) {
@@ -193,7 +210,8 @@ const App = {
         this.updateInstallmentFieldsVisibility();
         
         // Income specific logic
-        document.getElementById('addSalaryBtn').style.display = isExpense ? 'none' : 'block';
+        const salaryBtn = document.getElementById('addSalaryBtn');
+        if (salaryBtn) salaryBtn.style.display = isExpense ? 'none' : 'block';
         document.getElementById('modalDesc').placeholder = isExpense ? '¿En qué gastaste?' : 'Descripción (opcional)';
         
         this.renderCategoryGrid();
@@ -393,13 +411,170 @@ const App = {
       );
     }
 
-    filtered.sort((a, b) => {
-      if (b.date !== a.date) return b.date.localeCompare(a.date);
-      return new Date(b.createdAt) - new Date(a.createdAt);
-    });
-
     document.getElementById('historyMonth').textContent = `${Utils.getMonthName(this.currentMonth)} ${this.currentMonth.getFullYear()}`;
-    this.renderTransactionList('historyList', filtered);
+
+    if (this.historyViewMode === 'list') {
+      filtered.sort((a, b) => {
+        if (b.date !== a.date) return b.date.localeCompare(a.date);
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+      this.renderTransactionList('historyList', filtered);
+    } else {
+      this.renderCategoryGroupedHistory(filtered);
+    }
+  },
+
+  setHistoryViewMode(mode) {
+    this.historyViewMode = mode;
+    const btnList = document.getElementById('btnViewList');
+    const btnCat = document.getElementById('btnViewCategory');
+    
+    if (btnList && btnCat) {
+      if (mode === 'list') {
+        btnList.classList.add('active');
+        btnList.style.background = 'rgba(255,255,255,0.1)';
+        btnList.style.color = 'var(--text-primary)';
+        
+        btnCat.classList.remove('active');
+        btnCat.style.background = 'transparent';
+        btnCat.style.color = 'var(--text-secondary)';
+      } else {
+        btnCat.classList.add('active');
+        btnCat.style.background = 'rgba(255,255,255,0.1)';
+        btnCat.style.color = 'var(--text-primary)';
+        
+        btnList.classList.remove('active');
+        btnList.style.background = 'transparent';
+        btnList.style.color = 'var(--text-secondary)';
+      }
+    }
+    this.renderHistory();
+  },
+
+  renderCategoryGroupedHistory(transactions) {
+    const listEl = document.getElementById('historyList');
+    if (!listEl) return;
+    
+    if (!transactions.length) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📝</div><div class="empty-title">${Utils.t('noTransactions')}</div><div class="empty-desc">${Utils.t('addFirst')}</div></div>`;
+      return;
+    }
+    
+    // Calculate total expenses for percentage calculation
+    const totalExpenses = transactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+      
+    // Group transactions by category ID and transaction type
+    const grouped = {};
+    transactions.forEach(t => {
+      const groupKey = `${t.category}-${t.type}`;
+      if (!grouped[groupKey]) {
+        grouped[groupKey] = {
+          category: Utils.getCategoryById(t.category),
+          type: t.type,
+          transactions: [],
+          total: 0
+        };
+      }
+      grouped[groupKey].transactions.push(t);
+      grouped[groupKey].total += t.amount;
+    });
+    
+    // Convert to sorted array
+    const groups = Object.values(grouped).sort((a, b) => b.total - a.total);
+    
+    listEl.innerHTML = groups.map(g => {
+      const cat = g.category;
+      const txCount = g.transactions.length;
+      const isIncomeGroup = g.type === 'income';
+      
+      const pct = isIncomeGroup ? 0 : Utils.percentage(g.total, totalExpenses);
+      const pctLabel = isIncomeGroup ? '' : `<span style="font-size:0.75rem; color:var(--text-secondary); margin-left: 6px;">(${pct}% ${Utils.t('ofTotal')})</span>`;
+      const accordionId = `cat-accordion-${cat.id}-${g.type}`;
+      
+      g.transactions.sort((a, b) => {
+        if (b.date !== a.date) return b.date.localeCompare(a.date);
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+      
+      return `
+        <div class="category-group-card" style="margin-bottom: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
+          <div class="group-header" onclick="App.toggleCategoryAccordion('${accordionId}')" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; cursor:pointer; user-select:none; transition: background 0.2s;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div class="group-icon" style="background:${cat.color}15; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                ${cat.icon}
+              </div>
+              <div>
+                <h4 style="font-size:0.95rem; font-weight:700; margin:0; color:var(--text-primary);">
+                  ${Utils.getCategoryName(cat)}${isIncomeGroup ? ` (${Utils.t('income')})` : ''}
+                </h4>
+                <span style="font-size:0.75rem; color:var(--text-secondary);">
+                  ${txCount} ${txCount === 1 ? Utils.t('transactionSingle') : Utils.t('transactionPlural')}
+                </span>
+              </div>
+            </div>
+            <div style="text-align: right; display:flex; align-items:center; gap:10px;">
+              <div>
+                <div style="font-size:1.05rem; font-weight:700; color:${isIncomeGroup ? 'var(--green)' : 'var(--text-primary)'};">
+                  ${isIncomeGroup ? '+' : '-'}${Utils.formatMoney(g.total)}
+                </div>
+                ${pctLabel}
+              </div>
+              <span class="accordion-chevron" style="font-size:0.7rem; color:var(--text-muted); transition: transform 0.3s ease;">▼</span>
+            </div>
+          </div>
+          
+          ${!isIncomeGroup ? `
+            <div style="height: 3px; width: 100%; background: rgba(255,255,255,0.05);">
+              <div style="height: 100%; width: ${pct}%; background: ${cat.color}; transition: width 0.5s ease-out;"></div>
+            </div>
+          ` : ''}
+          
+          <div id="${accordionId}" class="accordion-panel" style="max-height: 0; overflow: hidden; transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.15);">
+            <div style="padding: 8px 12px; display: flex; flex-direction: column; gap: 8px;">
+              ${g.transactions.map(tx => {
+                const sign = tx.type === 'income' ? '+' : '-';
+                const label = tx.description || Utils.getCategoryName(cat);
+                return `
+                  <div class="tx-item" data-id="${tx.id}" style="margin: 0; padding: 10px; border-radius: 8px; border: none; background: rgba(255,255,255,0.02);">
+                    <div class="tx-info" style="flex:1;">
+                      <div class="tx-info-top">
+                        <div class="tx-date">${Utils.formatDate(tx.date)}</div>
+                        <div class="tx-amount ${tx.type}">${sign}${Utils.formatMoney(tx.amount)}</div>
+                      </div>
+                      <div class="tx-desc" style="font-size:0.85rem; color:var(--text-primary); margin-top:2px;">${label}</div>
+                    </div>
+                    <div class="tx-actions">
+                      <button class="tx-action-btn" onclick="App.editTransaction('${tx.id}')" title="${Utils.t('edit')}">✏️</button>
+                      <button class="tx-action-btn" onclick="App.deleteTransactionConfirm('${tx.id}')" title="${Utils.t('delete')}">🗑</button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  toggleCategoryAccordion(id) {
+    const panel = document.getElementById(id);
+    if (!panel) return;
+    
+    const card = panel.closest('.category-group-card');
+    const chevron = card.querySelector('.accordion-chevron');
+    const isCollapsed = !panel.style.maxHeight || panel.style.maxHeight === '0px';
+    
+    if (isCollapsed) {
+      panel.style.maxHeight = panel.scrollHeight + 'px';
+      if (chevron) chevron.style.transform = 'rotate(180deg)';
+    } else {
+      panel.style.maxHeight = '0px';
+      if (chevron) chevron.style.transform = 'rotate(0deg)';
+    }
+    Utils.vibrate([8]);
   },
 
   // ===== REPORTS =====
@@ -589,6 +764,8 @@ const App = {
     document.getElementById('settingTheme').checked = (s.theme || 'dark') === 'dark';
     document.getElementById('settingIncome').value = s.monthlyIncome || '';
     this.renderCardSettings();
+    this.renderRulesSettings();
+    this.populateRulesCategorySelect();
   },
 
   renderCardSettings() {
@@ -669,6 +846,7 @@ const App = {
       DB.updateSetting('lang', e.target.value);
       Utils.setLang(e.target.value);
       Voice.updateLanguage();
+      this.applyTranslations();
       this.refreshUI();
     });
 
@@ -697,6 +875,7 @@ const App = {
       const text = await file.text();
       const ok = await DB.importData(text);
       Utils.showToast(ok ? '✅ Importado' : '❌ Error', ok ? 'success' : 'error');
+      this.applyTranslations();
       this.refreshUI();
     });
   },
@@ -757,7 +936,8 @@ const App = {
       document.getElementById('instCard').value = defaults.cardName || '';
     }
     
-    document.getElementById('addSalaryBtn').style.display = isExpense ? 'none' : 'block';
+    const salaryBtn = document.getElementById('addSalaryBtn');
+    if (salaryBtn) salaryBtn.style.display = isExpense ? 'none' : 'block';
     document.getElementById('modalDesc').placeholder = isExpense ? '¿En qué gastaste?' : 'Descripción (opcional)';
 
     // Render categories
@@ -853,6 +1033,16 @@ const App = {
         tx.description = description;
         tx.date = date;
         await DB.updateTransaction(tx);
+        
+        // Auto-learn/update categorization rule
+        if (description && description.trim().length > 0 && description.trim().length <= 35) {
+          const cleaned = Utils.cleanKeyword(description);
+          if (cleaned) {
+            this.learningRules[cleaned] = category;
+            await DB.saveLearningRule(cleaned, category);
+          }
+        }
+        
         Utils.showToast('✅ Editado correctamente');
       }
       this.editingTransaction = null;
@@ -870,8 +1060,28 @@ const App = {
         });
         const msg = isSubscription ? '✅ Suscripción guardada' : `✅ ${Utils.t('saved')} — ${instCount} cuotas de ${Utils.formatMoney(amount / parseInt(instCount))}`;
         Utils.showToast(msg);
+        
+        // Auto-learn categorization rule for installments
+        const instDesc = description || Utils.getCategoryName(Utils.getCategoryById(category));
+        if (instDesc && instDesc.trim().length > 0 && instDesc.trim().length <= 35) {
+          const cleaned = Utils.cleanKeyword(instDesc);
+          if (cleaned) {
+            this.learningRules[cleaned] = category;
+            await DB.saveLearningRule(cleaned, category);
+          }
+        }
       } else {
         await DB.addTransaction({ type, amount, category, description, date });
+        
+        // Auto-learn categorization rule
+        if (description && description.trim().length > 0 && description.trim().length <= 35) {
+          const cleaned = Utils.cleanKeyword(description);
+          if (cleaned) {
+            this.learningRules[cleaned] = category;
+            await DB.saveLearningRule(cleaned, category);
+          }
+        }
+        
         Utils.showToast(Utils.t('saved'));
       }
     }
@@ -1052,8 +1262,9 @@ const App = {
       if (parsed.installmentCount && parsed.installmentCount > 1 && parsed.type === 'expense') {
         const s = DB.getSettings();
         const defaultCard = (s.cards && s.cards.length > 0) ? s.cards[0] : 'Visa';
+        const productName = parsed.description || Utils.getCategoryName(Utils.getCategoryById(parsed.category));
         await DB.addInstallment({
-          productName: parsed.description || Utils.getCategoryName(Utils.getCategoryById(parsed.category)),
+          productName: productName,
           totalAmount: parsed.amount,
           installmentCount: parsed.isSubscription ? 9999 : (parsed.installmentCount || 12),
           cardName: parsed.cardName || defaultCard,
@@ -1062,6 +1273,15 @@ const App = {
         });
         const msg = parsed.isSubscription ? `✅ Suscripción guardada: ${Utils.formatMoney(parsed.amount)}` : `✅ Guardado: ${parsed.installmentCount} cuotas de ${Utils.formatMoney(parsed.amount / parsed.installmentCount)}`;
         Utils.showToast(msg);
+        
+        // Auto-learn rule from voice installment
+        if (productName && productName.trim().length > 0 && productName.trim().length <= 35) {
+          const cleaned = Utils.cleanKeyword(productName);
+          if (cleaned) {
+            this.learningRules[cleaned] = parsed.category;
+            await DB.saveLearningRule(cleaned, parsed.category);
+          }
+        }
       } else {
         await DB.addTransaction({
           type: parsed.type,
@@ -1070,6 +1290,16 @@ const App = {
           description: parsed.description,
           date: Utils.getToday()
         });
+        
+        // Auto-learn rule from voice transaction
+        if (parsed.description && parsed.description.trim().length > 0 && parsed.description.trim().length <= 35) {
+          const cleaned = Utils.cleanKeyword(parsed.description);
+          if (cleaned) {
+            this.learningRules[cleaned] = parsed.category;
+            await DB.saveLearningRule(cleaned, parsed.category);
+          }
+        }
+        
         Utils.showToast('✅ Guardado por voz');
       }
       Utils.vibrate([10, 50, 10]);
@@ -1109,6 +1339,106 @@ const App = {
   nextMonth() {
     this.currentMonth = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 1, 1);
     this.navigate(this.currentPage);
+  },
+
+  // ===== TRANSLATIONS & LEARNING RULES HELPERS =====
+  applyTranslations() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      const text = Utils.t(key);
+      if (text !== key) {
+        el.innerHTML = text;
+      }
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+      const key = el.getAttribute('data-i18n-placeholder');
+      const text = Utils.t(key);
+      if (text !== key) {
+        el.placeholder = text;
+      }
+    });
+  },
+
+  populateRulesCategorySelect() {
+    const select = document.getElementById('newRuleCategory');
+    if (select) {
+      select.innerHTML = Utils.defaultCategories
+        .map(c => `<option value="${c.id}">${c.icon} ${Utils.getCategoryName(c)}</option>`)
+        .join('');
+    }
+  },
+
+  renderRulesSettings() {
+    const listEl = document.getElementById('settingsRulesList');
+    if (!listEl) return;
+    
+    const rules = Object.entries(this.learningRules);
+    if (rules.length === 0) {
+      listEl.innerHTML = `
+        <div style="font-size:0.8rem; color:var(--text-secondary); text-align:center; padding:16px;" data-i18n="noRules">
+          ${Utils.t('noRules')}
+        </div>
+      `;
+      return;
+    }
+    
+    rules.sort((a, b) => a[0].localeCompare(b[0]));
+    
+    listEl.innerHTML = rules.map(([keyword, categoryId]) => {
+      const cat = Utils.getCategoryById(categoryId);
+      return `
+        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.04); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.03);">
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <span style="font-size:0.9rem; font-weight:600; color:var(--text-primary);">${keyword}</span>
+            <span style="font-size:0.75rem; color:${cat.color}; font-weight:500; display:flex; align-items:center; gap:4px;">
+              <span>${cat.icon}</span> <span>${Utils.getCategoryName(cat)}</span>
+            </span>
+          </div>
+          <button class="btn-secondary" style="padding:6px 10px; font-size:0.8rem; width:auto; margin:0; background:none; border:none; opacity:0.8; cursor:pointer;" onclick="App.deleteCustomRule('${keyword.replace(/'/g, "\\'")}')" title="${Utils.t('delete')}">🗑</button>
+        </div>
+      `;
+    }).join('');
+  },
+
+  async addCustomRuleFromSettings() {
+    const keywordInput = document.getElementById('newRuleKeyword');
+    const categorySelect = document.getElementById('newRuleCategory');
+    if (!keywordInput || !categorySelect) return;
+    
+    const rawKeyword = keywordInput.value.trim();
+    const category = categorySelect.value;
+    
+    if (!rawKeyword) {
+      Utils.showToast(Utils.t('enterKeywordError'), 'error');
+      keywordInput.style.borderColor = 'var(--red)';
+      return;
+    }
+    keywordInput.style.borderColor = '';
+    
+    const cleaned = Utils.cleanKeyword(rawKeyword);
+    if (!cleaned) {
+      Utils.showToast(Utils.t('enterKeywordError'), 'error');
+      return;
+    }
+    
+    this.learningRules[cleaned] = category;
+    await DB.saveLearningRule(cleaned, category);
+    
+    keywordInput.value = '';
+    this.renderRulesSettings();
+    Utils.showToast(Utils.t('ruleAdded'));
+    Utils.vibrate([10]);
+  },
+
+  async deleteCustomRule(keyword) {
+    const cleaned = Utils.cleanKeyword(keyword);
+    if (this.learningRules[cleaned]) {
+      delete this.learningRules[cleaned];
+      await DB.deleteLearningRule(cleaned);
+      this.renderRulesSettings();
+      Utils.showToast(Utils.t('deleted'));
+      Utils.vibrate([10]);
+    }
   },
 };
 

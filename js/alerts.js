@@ -68,7 +68,7 @@ const Alerts = {
           this.activeAlerts.push({
             id: `anomaly-${catId}`, type: 'info', icon: '📊',
             message: Utils.t('alertCategory', { cat: Utils.getCategoryName(cat) }),
-            detail: `${Utils.formatMoney(amount)} este mes vs ${Utils.formatMoney(prevAmount)} mes anterior`,
+            detail: Utils.t('alertCategoryDetail', { current: Utils.formatMoney(amount), prev: Utils.formatMoney(prevAmount) }),
           });
         }
       }
@@ -81,8 +81,8 @@ const Alerts = {
       if (cardPct >= 30) {
         this.activeAlerts.push({
           id: 'card-high', type: 'warning', icon: '💳',
-          message: `Tus cuotas de tarjeta representan el ${cardPct}% de tus ingresos`,
-          detail: `${Utils.formatMoney(instSummary.monthlyPayment)}/mes en cuotas`,
+          message: Utils.t('alertCardHigh', { pct: cardPct }),
+          detail: Utils.t('alertCardHighDetail', { amount: Utils.formatMoney(instSummary.monthlyPayment) }),
         });
       }
     }

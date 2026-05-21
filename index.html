@@ -19,20 +19,20 @@
   <div id="onboarding" class="onboarding-overlay hidden">
     <div class="onboarding-logo">💰</div>
     <h1 class="onboarding-title">CuentasClaras</h1>
-    <p class="onboarding-desc">Tu contador personal en el bolsillo. Llevá el control de tus finanzas de forma simple, rápida y privada.</p>
+    <p class="onboarding-desc" data-i18n="onboardingWelcome">Tu contador personal en el bolsillo. Llevá el control de tus finanzas de forma simple, rápida y privada.</p>
     
     <div id="onboardingInstallContainer" style="display:none; flex-direction:column; align-items:center; gap:15px; margin-bottom:20px;">
-      <p style="font-size:0.9rem; color:var(--yellow); font-weight:600;">✨ ¡Mejorá tu experiencia!</p>
-      <button onclick="App.installPWA()" class="btn-primary" style="background:var(--green); color:#000; max-width:250px;">Descargar App 📲</button>
-      <p style="font-size:0.75rem; color:var(--text-secondary);">Instalá la app para un acceso más rápido y seguro.</p>
+      <p style="font-size:0.9rem; color:var(--yellow); font-weight:600;" data-i18n="improveExperience">✨ ¡Mejorá tu experiencia!</p>
+      <button onclick="App.installPWA()" class="btn-primary" style="background:var(--green); color:#000; max-width:250px;" data-i18n="downloadApp">Descargar App 📲</button>
+      <p style="font-size:0.75rem; color:var(--text-secondary);" data-i18n="downloadAppDesc">Instalá la app para un acceso más rápido y seguro.</p>
     </div>
 
-    <button id="onboardStart" class="btn-primary" style="max-width:300px">Comenzar 🚀</button>
+    <button id="onboardStart" class="btn-primary" style="max-width:300px" data-i18n="getStarted">Comenzar 🚀</button>
   </div>
 
   <!-- ===== HEADER ===== -->
   <header class="app-header">
-    <h1>CuentasClaras</h1>
+    <h1 data-i18n="appName">CuentasClaras</h1>
     <div class="header-right">
       <button class="header-btn" onclick="App.navigate('settings')" aria-label="Settings">⚙️</button>
     </div>
@@ -43,10 +43,10 @@
     <!-- Balance Hero -->
     <div class="balance-hero">
       <div style="display:flex; justify-content:center; align-items:center; margin-bottom: 5px;">
-        <div class="balance-label" id="balanceLabel" style="margin-bottom:0;">Balance Mensual</div>
+        <div class="balance-label" id="balanceLabel" style="margin-bottom:0;" data-i18n="monthlyBalance">Balance Mensual</div>
       </div>
       <div class="balance-amount" id="balanceAmount">$0.00</div>
-      <div class="balance-status status-good" id="balanceStatus">● Bien</div>
+      <div class="balance-status status-good" id="balanceStatus" data-i18n="good">● Bien</div>
     </div>
 
     <!-- Income / Expenses -->
@@ -68,14 +68,14 @@
 
     <!-- Credit Card Widget -->
     <div id="dashCardWidget" class="card" style="display:none">
-      <div class="card-title">💳 Tarjetas de Crédito</div>
+      <div class="card-title" data-i18n="creditCardWidgetTitle">💳 Tarjetas de Crédito</div>
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-size:0.8rem;color:var(--text-secondary)">Gasto mensual en cuotas</div>
+          <div style="font-size:0.8rem;color:var(--text-secondary)" data-i18n="monthlyCardCuotas">Gasto mensual en cuotas</div>
           <div class="card-monthly" style="font-size:1.2rem;font-weight:700;color:var(--yellow)">$0</div>
         </div>
         <div style="text-align:right">
-          <div style="font-size:0.8rem;color:var(--text-secondary)">Compras activas</div>
+          <div style="font-size:0.8rem;color:var(--text-secondary)" data-i18n="activePurchases">Compras activas</div>
           <div class="card-count" style="font-size:1.2rem;font-weight:700">0</div>
         </div>
       </div>
@@ -107,8 +107,14 @@
       <h2 id="historyMonth" style="font-size:1.1rem;font-weight:700"></h2>
       <button class="header-btn" onclick="App.nextMonth()">▶</button>
     </div>
+
+    <div class="view-selector-tabs" style="display:flex; background:rgba(255,255,255,0.05); padding:4px; border-radius:12px; margin-bottom:12px; border: 1px solid var(--border);">
+      <button id="btnViewList" class="tab-btn active" onclick="App.setHistoryViewMode('list')" style="flex:1; padding:8px; border:none; background:rgba(255,255,255,0.1); color:var(--text-primary); border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer;" data-i18n="historyViewList">Lista</button>
+      <button id="btnViewCategory" class="tab-btn" onclick="App.setHistoryViewMode('category')" style="flex:1; padding:8px; border:none; background:transparent; color:var(--text-secondary); border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer;" data-i18n="historyViewCategory">Por Categoría</button>
+    </div>
+
     <div class="search-bar">
-      <input type="text" id="historySearch" placeholder="Buscar transacciones..." class="form-input" style="padding-left:40px">
+      <input type="text" id="historySearch" placeholder="Buscar transacciones..." data-i18n-placeholder="searchPlaceholder" class="form-input" style="padding-left:40px">
     </div>
     <div class="card">
       <div id="historyList" class="tx-list"></div>
@@ -181,15 +187,15 @@
     <h2 style="font-size:1.2rem;font-weight:700;margin-bottom:16px" data-i18n="settings">Ajustes</h2>
 
     <div class="settings-group">
-      <div class="settings-group-title">General</div>
+      <div class="settings-group-title" data-i18n="settingsGeneral">General</div>
 
       <div class="setting-item">
-        <div class="setting-left"><span class="setting-icon">🌐</span><div><div class="setting-label">Idioma</div></div></div>
+        <div class="setting-left"><span class="setting-icon">🌐</span><div><div class="setting-label" data-i18n="language">Idioma</div></div></div>
         <select id="settingLang" class="setting-select"><option value="es">Español</option><option value="en">English</option></select>
       </div>
 
       <div class="setting-item">
-        <div class="setting-left"><span class="setting-icon">💱</span><div><div class="setting-label">Moneda</div></div></div>
+        <div class="setting-left"><span class="setting-icon">💱</span><div><div class="setting-label" data-i18n="currency">Moneda</div></div></div>
         <select id="settingCurrency" class="setting-select">
           <option value="ARS">ARS ($)</option><option value="USD">USD (US$)</option><option value="EUR">EUR (€)</option>
           <option value="BRL">BRL (R$)</option><option value="MXN">MXN (MX$)</option><option value="CLP">CLP</option>
@@ -198,65 +204,81 @@
       </div>
 
       <div class="setting-item">
-        <div class="setting-left"><span class="setting-icon">🌙</span><div><div class="setting-label">Modo Oscuro</div></div></div>
+        <div class="setting-left"><span class="setting-icon">🌙</span><div><div class="setting-label" data-i18n="settingsTheme">Modo Oscuro</div></div></div>
         <label class="toggle"><input type="checkbox" id="settingTheme" checked><span class="toggle-slider"></span></label>
       </div>
 
       <div class="setting-item" onclick="App.showHelp()" style="cursor:pointer">
-        <div class="setting-left"><span class="setting-icon">❓</span><div><div class="setting-label">Ayuda y Privacidad</div><div class="setting-desc">Cómo usar la app y manejo de datos</div></div></div>
+        <div class="setting-left"><span class="setting-icon">❓</span><div><div class="setting-label" data-i18n="settingsHelp">Ayuda y Privacidad</div><div class="setting-desc" data-i18n="settingsHelpDesc">Cómo usar la app y manejo de datos</div></div></div>
         <span class="setting-value">→</span>
       </div>
       
       <div id="installBtnContainer" class="setting-item" style="display:none; cursor:pointer" onclick="App.installPWA()">
-        <div class="setting-left"><span class="setting-icon">📲</span><div><div class="setting-label">Instalar App</div><div class="setting-desc">Acceso rápido desde tu pantalla</div></div></div>
+        <div class="setting-left"><span class="setting-icon">📲</span><div><div class="setting-label" data-i18n="settingsInstall">Instalar App</div><div class="setting-desc" data-i18n="settingsInstallDesc">Acceso rápido desde tu pantalla</div></div></div>
         <span class="setting-value">→</span>
       </div>
     </div>
 
     <div class="settings-group">
-      <div class="settings-group-title">Finanzas</div>
+      <div class="settings-group-title" data-i18n="settingsFinance">Finanzas</div>
       <div class="setting-item" style="flex-direction:column;align-items:stretch;gap:8px">
-        <div class="setting-left"><span class="setting-icon">💵</span><div><div class="setting-label">Ingreso Mensual Fijo</div><div class="setting-desc">Para calcular alertas de exceso</div></div></div>
+        <div class="setting-left"><span class="setting-icon">💵</span><div><div class="setting-label" data-i18n="monthlyIncome">Monto Crítico de Gastos</div><div class="setting-desc" data-i18n="alertLimitDesc">Alerta al superar este límite mensual</div></div></div>
         <input type="number" id="settingIncome" class="form-input" placeholder="0.00" inputmode="decimal" style="font-size:1rem">
       </div>
     </div>
 
     <div class="settings-group">
-      <div class="settings-group-title">Mis Tarjetas de Crédito</div>
+      <div class="settings-group-title" data-i18n="smartCategorization">Categorización Inteligente</div>
+      <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:12px;" data-i18n="learningDesc">La app aprende de tus registros para categorizar correctamente en el futuro.</div>
+      
+      <div id="settingsRulesList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px; max-height:220px; overflow-y:auto; border-radius: 8px;"></div>
+      
+      <div style="background:rgba(255,255,255,0.02); padding:14px; border-radius:var(--radius-sm); border:1px solid var(--border); display:flex; flex-direction:column; gap:10px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--text-primary);" data-i18n="addRuleTitle">Agregar regla manual</div>
+        <div style="display:flex; gap:8px; flex-wrap: wrap;">
+          <input type="text" id="newRuleKeyword" class="form-input" placeholder="Claro, Coto, etc." data-i18n-placeholder="keywordPlaceholder" style="flex:1; min-width: 120px; padding: 10px 12px; font-size: 0.85rem;">
+          <select id="newRuleCategory" class="form-input" style="flex:1; min-width: 120px; padding: 10px 12px; font-size: 0.85rem; background: var(--bg-glass); color: var(--text-primary);"></select>
+          <button class="btn-primary" style="width:100%; padding:10px; font-size:0.85rem;" onclick="App.addCustomRuleFromSettings()" data-i18n="addRuleBtn">+ Agregar Regla</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-title" data-i18n="settingsCardsTitle">Mis Tarjetas de Crédito</div>
       <div id="settingsCardList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;"></div>
       <div style="display:flex; gap:8px;">
-        <input type="text" id="newCardBank" class="form-input" placeholder="Banco (ej. Galicia)">
+        <input type="text" id="newCardBank" class="form-input" placeholder="Banco (ej. Galicia)" data-i18n-placeholder="bankPlaceholder">
         <select id="newCardType" class="form-input" style="width:120px;">
-          <option value="Visa">Visa</option>
-          <option value="Mastercard">Mastercard</option>
-          <option value="Amex">Amex</option>
-          <option value="Otra">Otra</option>
+          <option value="Visa" data-i18n="cardTypeVisa">Visa</option>
+          <option value="Mastercard" data-i18n="cardTypeMastercard">Mastercard</option>
+          <option value="Amex" data-i18n="cardTypeAmex">Amex</option>
+          <option value="Otra" data-i18n="cardTypeOther">Otra</option>
         </select>
         <button class="btn-primary" style="width:auto; padding:0 16px;" onclick="App.addCardToSettings()">+</button>
       </div>
     </div>
 
     <div class="settings-group">
-      <div class="settings-group-title">Datos</div>
+      <div class="settings-group-title" data-i18n="settingsData">Datos</div>
       <button id="exportJSON" class="setting-item" style="width:100%;cursor:pointer;border:1px solid var(--border)">
-        <div class="setting-left"><span class="setting-icon">📤</span><div><div class="setting-label">Exportar Backup (JSON)</div></div></div>
+        <div class="setting-left"><span class="setting-icon">📤</span><div><div class="setting-label" data-i18n="exportBackup">Exportar Backup (JSON)</div></div></div>
         <span class="setting-value">→</span>
       </button>
       <button id="exportCSV" class="setting-item" style="width:100%;cursor:pointer;border:1px solid var(--border)">
-        <div class="setting-left"><span class="setting-icon">📊</span><div><div class="setting-label">Exportar CSV</div></div></div>
+        <div class="setting-left"><span class="setting-icon">📊</span><div><div class="setting-label" data-i18n="exportCSVBtn">Exportar CSV</div></div></div>
         <span class="setting-value">→</span>
       </button>
       <label class="setting-item" style="cursor:pointer">
-        <div class="setting-left"><span class="setting-icon">📥</span><div><div class="setting-label">Importar Datos</div></div></div>
+        <div class="setting-left"><span class="setting-icon">📥</span><div><div class="setting-label" data-i18n="importBackup">Importar Datos</div></div></div>
         <input type="file" id="importFile" accept=".json" style="display:none">
         <span class="setting-value">→</span>
       </label>
     </div>
 
     <div class="settings-group">
-      <div class="settings-group-title">Acerca de</div>
+      <div class="settings-group-title" data-i18n="about">Acerca de</div>
       <div class="setting-item" onclick="App.showAbout()" style="cursor:pointer">
-        <div class="setting-left"><span class="setting-icon">📱</span><div><div class="setting-label">CuentasClaras</div><div class="setting-desc" id="appVersionDisplay">Versión 1.0.23 — Tu contador personal</div></div></div>
+        <div class="setting-left"><span class="setting-icon">📱</span><div><div class="setting-label" data-i18n="appName">CuentasClaras</div><div class="setting-desc" id="appVersionDisplay"><span data-i18n="version">Versión</span> 1.0.23 — <span data-i18n="aboutDesc">Tu contador personal</span></div></div></div>
         <span class="setting-value">→</span>
       </div>
     </div>
@@ -268,19 +290,19 @@
   <!-- ===== BOTTOM NAV ===== -->
   <nav class="bottom-nav">
     <button class="nav-item active" data-page="dashboard">
-      <span class="nav-icon">🏠</span><span class="nav-label">Inicio</span>
+      <span class="nav-icon">🏠</span><span class="nav-label" data-i18n="dashboard">Inicio</span>
     </button>
     <button class="nav-item" data-page="history">
-      <span class="nav-icon">📋</span><span class="nav-label">Historial</span>
+      <span class="nav-icon">📋</span><span class="nav-label" data-i18n="history">Historial</span>
     </button>
     <button class="nav-item" data-page="reports">
-      <span class="nav-icon">📊</span><span class="nav-label">Reportes</span>
+      <span class="nav-icon">📊</span><span class="nav-label" data-i18n="reports">Reportes</span>
     </button>
     <button class="nav-item" data-page="cards">
-      <span class="nav-icon">💳</span><span class="nav-label">Tarjetas</span>
+      <span class="nav-icon">💳</span><span class="nav-label" data-i18n="cards">Tarjetas</span>
     </button>
     <button class="nav-item" data-page="settings">
-      <span class="nav-icon">⚙️</span><span class="nav-label">Ajustes</span>
+      <span class="nav-icon">⚙️</span><span class="nav-label" data-i18n="settings">Ajustes</span>
     </button>
   </nav>
 
@@ -289,14 +311,14 @@
     <div class="modal">
       <div class="modal-handle"></div>
       <button class="modal-close-btn" onclick="App.closeModal()">✕</button>
-      <div class="modal-title" id="modalTitle">Agregar Transacción</div>
+      <div class="modal-title" id="modalTitle" data-i18n="addTransaction">Agregar Transacción</div>
 
       <div id="voiceTranscript" class="voice-transcript"></div>
 
       <!-- Type Toggle -->
       <div class="type-toggle">
-        <button class="type-btn active expense-active" data-type="expense">Gasto</button>
-        <button class="type-btn" data-type="income">Ingreso</button>
+        <button class="type-btn active expense-active" data-type="expense" data-i18n="modalTypeExpense">Gasto</button>
+        <button class="type-btn" data-type="income" data-i18n="modalTypeIncome">Ingreso</button>
       </div>
       <input type="hidden" id="modalType" value="expense">
       <input type="hidden" id="modalCategory" value="food">
@@ -308,24 +330,23 @@
           <button id="addAmountBtn" class="btn-primary" style="width:50px; height:50px; font-size:1.5rem; display:flex; align-items:center; justify-content:center;" onclick="App.addAmountToList()">+</button>
         </div>
         <div id="amountSumDisplay" style="text-align:center; margin-top:8px; font-size:0.9rem; color:var(--accent); font-weight:700; display:none"></div>
-        <button id="addSalaryBtn" class="btn-secondary" style="margin-top:8px; display:none; padding:8px; font-size:0.85rem; width:100%;" onclick="document.getElementById('modalAmount').value = DB.getSettings().monthlyIncome || 0">💰 Cargar Salario Fijo</button>
       </div>
 
       <!-- Categories -->
       <div class="form-group">
-        <label class="form-label">Categoría</label>
+        <label class="form-label" data-i18n="modalCategoryLabel">Categoría</label>
         <div id="categoryGrid" class="cat-grid"></div>
       </div>
 
       <!-- Description -->
       <div class="form-group">
-        <label class="form-label">Descripción (opcional)</label>
-        <input type="text" id="modalDesc" class="form-input" placeholder="¿En qué gastaste?">
+        <label class="form-label" data-i18n="modalDescLabel">Descripción (opcional)</label>
+        <input type="text" id="modalDesc" class="form-input" placeholder="¿En qué gastaste?" data-i18n-placeholder="modalDescPlaceholderExpense">
       </div>
 
       <!-- Date -->
       <div class="form-group">
-        <label class="form-label">Fecha</label>
+        <label class="form-label" data-i18n="modalDateLabel">Fecha</label>
         <input type="date" id="modalDate" class="form-input">
       </div>
 
@@ -333,23 +354,23 @@
       <div id="installmentFields" style="display:block">
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
           <input type="checkbox" id="modalIsSubscription" style="width:20px;height:20px">
-          <label for="modalIsSubscription" style="font-size:0.9rem; font-weight:600">Pago Recurrente / Suscripción</label>
+          <label for="modalIsSubscription" style="font-size:0.9rem; font-weight:600" data-i18n="modalIsSubLabel">Pago Recurrente / Suscripción</label>
         </div>
         <div id="instCountGroup">
           <div class="form-group">
-            <label class="form-label">Cuotas (dejar vacío si es pago único)</label>
+            <label class="form-label" data-i18n="modalInstallmentLabel">Cuotas (dejar vacío si es pago único)</label>
             <input type="number" id="instCount" class="form-input" placeholder="Ej: 12" inputmode="numeric" min="1" max="60">
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Tarjeta</label>
+          <label class="form-label" data-i18n="modalCardLabel">Tarjeta</label>
           <select id="instCard" class="form-input"></select>
         </div>
       </div>
 
       <!-- Save -->
-      <button id="saveBtn" class="btn-primary">Guardar</button>
-      <button class="btn-secondary" onclick="App.closeModal()">Cancelar</button>
+      <button id="saveBtn" class="btn-primary" data-i18n="save">Guardar</button>
+      <button class="btn-secondary" onclick="App.closeModal()" data-i18n="cancel">Cancelar</button>
     </div>
   </div>
 
@@ -358,46 +379,46 @@
     <div class="modal">
       <div class="modal-handle"></div>
       <button class="modal-close-btn" onclick="document.getElementById('instModalOverlay').classList.remove('open')">✕</button>
-      <div class="modal-title">Agregar Compra en Cuotas</div>
+      <div class="modal-title" data-i18n="addInstallmentModalTitle">Agregar Compra en Cuotas</div>
       <input type="hidden" id="editingInstallmentId">
       <div class="form-group">
-        <label class="form-label">Producto / Descripción</label>
-        <input type="text" id="instProductName" class="form-input" placeholder="Ej: Heladera Samsung">
+        <label class="form-label" data-i18n="productDescriptionLabel">Producto / Descripción</label>
+        <input type="text" id="instProductName" class="form-input" placeholder="Ej: Heladera Samsung" data-i18n-placeholder="productDescriptionPlaceholder">
       </div>
       <!-- Amount Mode Selection -->
       <div class="form-group" id="instAmountModeGroup">
-        <label class="form-label">¿Qué monto vas a ingresar?</label>
+        <label class="form-label" data-i18n="amountModeLabel">¿Qué monto vas a ingresar?</label>
         <div class="type-toggle" style="margin-bottom: 12px; height: 38px;">
-          <button class="type-btn active" id="modeTotal" onclick="App.setInstAmountMode('total')" style="font-size: 0.85rem;">Monto Total</button>
-          <button class="type-btn" id="modeMonthly" onclick="App.setInstAmountMode('monthly')" style="font-size: 0.85rem;">Cuota Mensual</button>
+          <button class="type-btn active" id="modeTotal" onclick="App.setInstAmountMode('total')" style="font-size: 0.85rem;" data-i18n="amountModeTotal">Monto Total</button>
+          <button class="type-btn" id="modeMonthly" onclick="App.setInstAmountMode('monthly')" style="font-size: 0.85rem;" data-i18n="amountModeMonthly">Cuota Mensual</button>
         </div>
         <input type="hidden" id="instAmountMode" value="total">
       </div>
 
       <div class="form-group">
-        <label class="form-label" id="instAmountLabel">Monto Total de la Compra</label>
+        <label class="form-label" id="instAmountLabel" data-i18n="amountLabelTotal">Monto Total de la Compra</label>
         <input type="number" id="instTotalAmount" class="form-input amount-input" placeholder="0.00" inputmode="decimal" step="0.01">
       </div>
       <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">
         <input type="checkbox" id="instIsSubscription" style="width:20px;height:20px">
-        <label for="instIsSubscription" style="font-size:0.9rem; font-weight:600">Pago Recurrente / Suscripción</label>
+        <label for="instIsSubscription" style="font-size:0.9rem; font-weight:600" data-i18n="modalIsSubLabel">Pago Recurrente / Suscripción</label>
       </div>
       <div id="instModalCountsGroup">
         <div class="form-group">
-          <label class="form-label">Cantidad de Cuotas</label>
+          <label class="form-label" data-i18n="installmentCountLabel">Cantidad de Cuotas</label>
           <input type="number" id="instTotalCount" class="form-input" placeholder="12" inputmode="numeric" min="1" max="60">
         </div>
         <div class="form-group">
-          <label class="form-label">Cuota actual a pagar</label>
+          <label class="form-label" data-i18n="paidCountLabel">Cuota actual a pagar</label>
           <input type="number" id="instPaidCount" class="form-input" placeholder="1" inputmode="numeric" min="1" max="60">
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Tarjeta</label>
+        <label class="form-label" data-i18n="modalCardLabel">Tarjeta</label>
         <select id="instCardName" class="form-input"></select>
       </div>
-      <button id="instSaveBtn" class="btn-primary">Guardar</button>
-      <button class="btn-secondary" onclick="document.getElementById('instModalOverlay').classList.remove('open')">Cancelar</button>
+      <button id="instSaveBtn" class="btn-primary" data-i18n="save">Guardar</button>
+      <button class="btn-secondary" onclick="document.getElementById('instModalOverlay').classList.remove('open')" data-i18n="cancel">Cancelar</button>
     </div>
   </div>
 
@@ -405,48 +426,33 @@
   <div id="cardPayModalOverlay" class="modal-overlay">
     <div class="modal">
       <div class="modal-handle"></div>
-      <div class="modal-title" id="cardPayTitle">Pagar Tarjeta</div>
-      <div id="cardPayWarning" style="display:none; color:var(--yellow); margin-bottom: 15px; font-size: 0.9rem; background: rgba(255, 217, 61, 0.1); padding: 10px; border-radius: 8px;">
+      <div class="modal-title" id="cardPayTitle" data-i18n="cardPayTitle">Pagar Tarjeta</div>
+      <div id="cardPayWarning" style="display:none; color:var(--yellow); margin-bottom: 15px; font-size: 0.9rem; background: rgba(255, 217, 61, 0.1); padding: 10px; border-radius: 8px;" data-i18n="cardPayWarningText">
         ⚠️ Ya registraste un pago para esta tarjeta este mes. ¿Deseas continuar?
       </div>
       <div style="margin-bottom: 15px;">
-        <span style="color:var(--text-secondary); font-size:0.9rem;">Monto sugerido (cuotas del mes):</span>
+        <span style="color:var(--text-secondary); font-size:0.9rem;" data-i18n="cardPaySuggestedText">Monto sugerido (cuotas del mes):</span>
         <div id="cardPaySuggested" style="font-size:1.5rem; font-weight:700; color:var(--text);"></div>
       </div>
       <div class="form-group">
-        <label class="form-label">Monto a pagar (puedes modificarlo)</label>
+        <label class="form-label" data-i18n="cardPayInputLabel">Monto a pagar (puedes modificarlo)</label>
         <input type="number" id="cardPayAmount" class="form-input amount-input" placeholder="0.00" inputmode="decimal">
       </div>
       <input type="hidden" id="cardPayCardName">
-      <button id="cardPayBtn" class="btn-primary" onclick="App.confirmCardPayment()">Registrar Pago</button>
-      <button class="btn-secondary" onclick="document.getElementById('cardPayModalOverlay').classList.remove('open')">Cancelar</button>
+      <button id="cardPayBtn" class="btn-primary" onclick="App.confirmCardPayment()" data-i18n="cardPayBtnText">Registrar Pago</button>
+      <button class="btn-secondary" onclick="document.getElementById('cardPayModalOverlay').classList.remove('open')" data-i18n="cancel">Cancelar</button>
     </div>
   </div>
 
   <!-- ===== CONFIRM MODAL ===== -->
   <div id="confirmModalOverlay" class="modal-overlay">
     <div class="modal" style="text-align:center;">
-      <h3 style="margin-bottom:10px; font-size:1.2rem;">¿Estás seguro?</h3>
-      <p style="margin-bottom:20px; color:var(--text-secondary);">Esta acción no se puede deshacer.</p>
+      <h3 style="margin-bottom:10px; font-size:1.2rem;" data-i18n="confirmModalTitle">¿Estás seguro?</h3>
+      <p style="margin-bottom:20px; color:var(--text-secondary);" data-i18n="confirmModalDesc">Esta acción no se puede deshacer.</p>
       <div style="display:flex; gap:10px;">
-        <button id="confirmYesBtn" class="btn-primary" style="background:var(--red);">Eliminar</button>
-        <button class="btn-secondary" onclick="document.getElementById('confirmModalOverlay').classList.remove('open')">Cancelar</button>
+        <button id="confirmYesBtn" class="btn-primary" style="background:var(--red);" data-i18n="delete">Eliminar</button>
+        <button class="btn-secondary" onclick="document.getElementById('confirmModalOverlay').classList.remove('open')" data-i18n="cancel">Cancelar</button>
       </div>
-    </div>
-  </div>
-
-  <!-- ===== SALARY MODAL ===== -->
-  <div id="salaryModalOverlay" class="modal-overlay">
-    <div class="modal">
-      <div class="modal-handle"></div>
-      <div class="modal-title">Ingreso Mensual Fijo</div>
-      <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:16px;">Define tu salario o ingreso mensual principal. Este valor se usará para autocompletar ingresos y calcular alertas.</p>
-      <div class="form-group">
-        <label class="form-label">Monto</label>
-        <input type="number" id="salaryAmount" class="form-input amount-input" placeholder="0.00" inputmode="decimal">
-      </div>
-      <button class="btn-primary" onclick="App.saveSalary()">Guardar</button>
-      <button class="btn-secondary" onclick="document.getElementById('salaryModalOverlay').classList.remove('open')">Cancelar</button>
     </div>
   </div>
 
@@ -454,28 +460,28 @@
   <div id="helpModalOverlay" class="modal-overlay">
     <div class="modal">
       <div class="modal-handle"></div>
-      <div class="modal-title">Ayuda y Privacidad</div>
+      <div class="modal-title" data-i18n="settingsHelp">Ayuda y Privacidad</div>
       
       <div class="help-section">
-        <h3>🚀 Guía Completa</h3>
-        <p>• <strong>Dashboard:</strong> Visualiza tu balance neto, ingresos y gastos totales del mes. Los gráficos te ayudan a entender en qué se va tu dinero.</p>
-        <p>• <strong>Voz Inteligente:</strong> Mantén presionado el <strong>"+"</strong> para dictar. Ejemplo: <i>"Gasté 1500 en Coto"</i>. La app detectará automáticamente el monto y la categoría (Supermercado).</p>
-        <p>• <strong>Multimonto:</strong> ¿Muchos tickets? En el modo manual, ingresa un monto y presiona el <strong>"+"</strong> al lado del número para ir sumando varios montos a la vez.</p>
-        <p>• <strong>Tarjetas:</strong> Gestiona tus compras en cuotas. La app te recordará cuánto debes pagar cada mes y restará automáticamente las cuotas pagadas.</p>
-        <p>• <strong>Suscripciones:</strong> Ideal para Netflix, Spotify o el gimnasio. Tilda "Pago Recurrente" para que se cargue solo todos los meses.</p>
+        <h3 data-i18n="helpGuideTitle">🚀 Guía Completa</h3>
+        <p data-i18n="helpDashParagraph">• <strong>Dashboard:</strong> Visualiza tu balance neto, ingresos y gastos totales del mes. Los gráficos te ayudan a entender en qué se va tu dinero.</p>
+        <p data-i18n="helpVoiceParagraph">• <strong>Voz Inteligente:</strong> Mantén presionado el <strong>"+"</strong> para dictar. Ejemplo: <i>"Gasté 1500 en Coto"</i>. La app detectará automáticamente el monto y la categoría (Supermercado).</p>
+        <p data-i18n="helpMultimontoParagraph">• <strong>Multimonto:</strong> ¿Muchos tickets? En el modo manual, ingresa un monto y presiona el <strong>"+"</strong> al lado del número para ir sumando varios montos a la vez.</p>
+        <p data-i18n="helpCardsParagraph">• <strong>Tarjetas:</strong> Gestiona tus compras en cuotas. La app te recordará cuánto debes pagar cada mes y restará automáticamente las cuotas pagadas.</p>
+        <p data-i18n="helpSubsParagraph">• <strong>Suscripciones:</strong> Ideal para Netflix, Spotify o el gimnasio. Tilda "Pago Recurrente" para que se cargue solo todos los meses.</p>
       </div>
 
       <div class="help-section" style="margin-top:20px; border-top:1px solid var(--border); padding-top:15px;">
-        <h3>🔒 Privacidad Total</h3>
-        <p>Tus datos son <strong>100% privados</strong>. No tenemos servidores ni acceso a tu información.</p>
-        <p>Todo se guarda en la base de datos interna de tu navegador (IndexedDB). Te recomendamos <strong>Exportar Backup</strong> periódicamente desde Ajustes.</p>
+        <h3 data-i18n="helpPrivacyTitle">🔒 Privacidad Total</h3>
+        <p data-i18n="helpPrivacyParagraph1">Tus datos son <strong>100% privados</strong>. No tenemos servidores ni acceso a tu información.</p>
+        <p data-i18n="helpPrivacyParagraph2">Todo se guarda en la base de datos interna de tu navegador (IndexedDB). Te recomendamos <strong>Exportar Backup</strong> periódicamente desde Ajustes.</p>
         <div style="background: rgba(255,107,107,0.15); border: 1px solid rgba(255,107,107,0.3); padding: 10px; border-radius: 8px; margin-top: 10px;">
-          <strong style="color: var(--red); display: block; margin-bottom: 4px;">⚠️ ADVERTENCIA CRÍTICA</strong>
-          <span style="font-size: 0.8rem; color: var(--text-secondary);">Si borras el historial de tu navegador y seleccionas "Borrar cookies y datos de sitios", <strong>PERDERÁS TODOS TUS DATOS</strong>. La app no puede evitar esto. Por favor, realiza backups en formato JSON (desde Ajustes) periódicamente para estar seguro.</span>
+          <strong style="color: var(--red); display: block; margin-bottom: 4px;" data-i18n="helpWarningTitle">⚠️ ADVERTENCIA CRÍTICA</strong>
+          <span style="font-size: 0.8rem; color: var(--text-secondary);" data-i18n="helpWarningParagraph">Si borras el historial de tu navegador y seleccionas "Borrar cookies y datos de sitios", <strong>PERDERÁS TODOS TUS DATOS</strong>. La app no puede evitar esto. Por favor, realiza backups en formato JSON (desde Ajustes) periódicamente para estar seguro.</span>
         </div>
       </div>
 
-      <button class="btn-primary" style="margin-top:20px" onclick="document.getElementById('helpModalOverlay').classList.remove('open')">Entendido</button>
+      <button class="btn-primary" style="margin-top:20px" onclick="document.getElementById('helpModalOverlay').classList.remove('open')" data-i18n="helpUnderstood">Entendido</button>
     </div>
   </div>
 
@@ -484,16 +490,16 @@
     <div class="modal" style="text-align:center">
       <div class="modal-handle"></div>
       <div class="onboarding-logo">💰</div>
-      <h2 style="margin-bottom:10px">CuentasClaras</h2>
-      <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:20px;">Tu contador personal y privado.</p>
+      <h2 style="margin-bottom:10px" data-i18n="appName">CuentasClaras</h2>
+      <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:20px;" data-i18n="aboutDesc">Tu contador personal y privado.</p>
       
       <div style="text-align:left; background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; margin-bottom:20px;">
-        <p style="font-size:0.85rem; margin-bottom:8px;"><strong>Versión:</strong> <span class="app-version-txt">1.0.23</span></p>
-        <p style="font-size:0.85rem; margin-bottom:8px;"><strong>Objetivo:</strong> Ayudarte a tener una relación sana con tu dinero mediante el registro simple de gastos.</p>
-        <p style="font-size:0.85rem;"><strong>Desarrollo:</strong> Creada para ser la herramienta más rápida y privada de control financiero personal.</p>
+        <p style="font-size:0.85rem; margin-bottom:8px;"><strong><span data-i18n="version">Versión</span>:</strong> <span class="app-version-txt">1.0.23</span></p>
+        <p style="font-size:0.85rem; margin-bottom:8px;" data-i18n="aboutGoal"><strong>Objetivo:</strong> Ayudarte a tener una relación sana con tu dinero mediante el registro simple de gastos.</p>
+        <p style="font-size:0.85rem;" data-i18n="aboutDev"><strong>Desarrollo:</strong> Creada para ser la herramienta más rápida y privada de control financiero personal.</p>
       </div>
       
-      <button class="btn-primary" onclick="document.getElementById('aboutModalOverlay').classList.remove('open')">Cerrar</button>
+      <button class="btn-primary" onclick="document.getElementById('aboutModalOverlay').classList.remove('open')" data-i18n="closeBtn">Cerrar</button>
     </div>
   </div>
 

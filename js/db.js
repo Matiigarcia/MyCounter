@@ -5,7 +5,7 @@
 const DB = {
   db: null,
   DB_NAME: 'CuentasClarasDB',
-  DB_VERSION: 2,
+  DB_VERSION: 3,
 
   // ---- Initialize Database ----
   async init() {
@@ -42,6 +42,11 @@ const DB = {
         // Budgets store
         if (!db.objectStoreNames.contains('budgets')) {
           db.createObjectStore('budgets', { keyPath: 'category' });
+        }
+
+        // Learning rules store
+        if (!db.objectStoreNames.contains('learningRules')) {
+          db.createObjectStore('learningRules', { keyPath: 'keyword' });
         }
       };
 
@@ -315,6 +320,25 @@ const DB = {
   },
 
   // ============================================================
+  // LEARNING RULES (Custom Categorization Vocabulary)
+  // ============================================================
+
+  async saveLearningRule(keyword, category) {
+    const store = this._getStore('learningRules', 'readwrite');
+    await this._promisify(store.put({ keyword: keyword.toLowerCase().trim(), category }));
+  },
+
+  async deleteLearningRule(keyword) {
+    const store = this._getStore('learningRules', 'readwrite');
+    return this._promisify(store.delete(keyword.toLowerCase().trim()));
+  },
+
+  async getAllLearningRules() {
+    const store = this._getStore('learningRules');
+    return this._promisify(store.getAll());
+  },
+
+  // ============================================================
   // SETTINGS (using localStorage)
   // ============================================================
 
@@ -351,14 +375,16 @@ const DB = {
     const transactions = await this.getAllTransactions();
     const installments = await this.getAllInstallments();
     const budgets = await this.getAllBudgets();
+    const learningRules = await this.getAllLearningRules();
     const settings = this.getSettings();
 
     const data = {
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
       transactions,
       installments,
       budgets,
+      learningRules,
       settings,
     };
 
@@ -418,7 +444,13 @@ const DB = {
           await this._promisify(store.put(b));
         }
       }
-// Versión de DB actualizada para soportar edición de cuotas.
+
+      if (data.learningRules) {
+        const store = this._getStore('learningRules', 'readwrite');
+        for (const lr of data.learningRules) {
+          await this._promisify(store.put(lr));
+        }
+      }
 
       if (data.settings) {
         this.saveSettings(data.settings);
@@ -531,6 +563,7 @@ const DB = {
         if (!db.objectStoreNames.contains('transactions')) db.createObjectStore('transactions', { keyPath: 'id' });
         if (!db.objectStoreNames.contains('installments')) db.createObjectStore('installments', { keyPath: 'id' });
         if (!db.objectStoreNames.contains('budgets')) db.createObjectStore('budgets', { keyPath: 'category' });
+        if (!db.objectStoreNames.contains('learningRules')) db.createObjectStore('learningRules', { keyPath: 'keyword' });
       };
       request.onsuccess = (event) => {
         this.db = event.target.result;

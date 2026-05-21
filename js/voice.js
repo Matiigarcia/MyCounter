@@ -70,23 +70,40 @@ const Voice = {
     const amount = Utils.parseSpokenNumber(lower);
     if (amount > 0) { result.amount = amount; result.confidence += 0.4; }
 
-    const catKw = {
-      food: ['comida','comer','carniceria','verdulerias','delivery','cena','cenas','restaurant','restaurante','rappi','pedidosya','café','pizza'],
-      supermarket: ['super','supermercado','coto','carrefour','mercadito','jumbo','superchino','chino','mercado','grocery'],
-      transport: ['taxi','uber','colectivo','bondi','subte','nafta','combustible','transport','gas','fuel','bus'],
-      services: ['luz','agua','internet','teléfono','telefono','celular','cable','servicios','electricity','phone','wifi'],
-      health: ['médico','medico','farmacia','doctor','hospital','salud','health','medicine','pharmacy'],
-      entertainment: ['cine','netflix','spotify','juego','salida','bar','streaming','movie','game','teatro'],
-      clothing: ['ropa','zapatos','zapatillas','camisa','remera','clothes','shoes','shirt'],
-      education: ['curso','libro','escuela','universidad','facultad','course','book','school'],
-      home: ['alquiler','expensas','mueble','hogar','casa','rent','home','furniture'],
-      savings: ['ahorro','inversión','plazo fijo','dólar','savings','investment'],
-      salary: ['sueldo','salario','salary','paycheck'],
-      freelance: ['freelance','proyecto','cliente','project','client'],
-    };
+    let foundLearned = false;
+    if (typeof App !== 'undefined' && App.learningRules) {
+      const sortedKeywords = Object.keys(App.learningRules).sort((a, b) => b.length - a.length);
+      const cleanSpoken = Utils.cleanKeyword(lower);
+      for (const keyword of sortedKeywords) {
+        const cleanKw = Utils.cleanKeyword(keyword);
+        if (cleanKw && cleanSpoken.includes(cleanKw)) {
+          result.category = App.learningRules[keyword];
+          result.confidence += 0.5;
+          foundLearned = true;
+          break;
+        }
+      }
+    }
 
-    for (const [catId, kws] of Object.entries(catKw)) {
-      if (kws.some(kw => lower.includes(kw))) { result.category = catId; result.confidence += 0.3; break; }
+    if (!foundLearned) {
+      const catKw = {
+        food: ['comida','comer','carniceria','verdulerias','delivery','cena','cenas','restaurant','restaurante','rappi','pedidosya','café','pizza'],
+        supermarket: ['super','supermercado','coto','carrefour','mercadito','jumbo','superchino','chino','mercado','grocery'],
+        transport: ['taxi','uber','colectivo','bondi','subte','nafta','combustible','transport','gas','fuel','bus'],
+        services: ['luz','agua','internet','teléfono','telefono','celular','cable','servicios','electricity','phone','wifi'],
+        health: ['médico','medico','farmacia','doctor','hospital','salud','health','medicine','pharmacy'],
+        entertainment: ['cine','netflix','spotify','juego','salida','bar','streaming','movie','game','teatro'],
+        clothing: ['ropa','zapatos','zapatillas','camisa','remera','clothes','shoes','shirt'],
+        education: ['curso','libro','escuela','universidad','facultad','course','book','school'],
+        home: ['alquiler','expensas','mueble','hogar','casa','rent','home','furniture'],
+        savings: ['ahorro','inversión','plazo fijo','dólar','savings','investment'],
+        salary: ['sueldo','salario','salary','paycheck'],
+        freelance: ['freelance','proyecto','cliente','project','client'],
+      };
+
+      for (const [catId, kws] of Object.entries(catKw)) {
+        if (kws.some(kw => lower.includes(kw))) { result.category = catId; result.confidence += 0.3; break; }
+      }
     }
 
     const instMatch = lower.match(/(\d+)\s*(cuotas?|installments?)/);
