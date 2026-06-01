@@ -1,50 +1,29 @@
 // ============================================================
-// CuentasClaras — Main Application
+// CuentaClara — Main Application
 // ============================================================
 
 const App = {
-  VERSION: '1.0.23',
   currentPage: 'dashboard',
   currentMonth: new Date(),
   editingTransaction: null,
-  pendingAmounts: [],
-  historyViewMode: 'list',
-  learningRules: {},
 
   async init() {
-    this.checkVersion();
     await DB.init();
+    await DB.checkAndCreateCarryOver();
     const settings = DB.getSettings();
     Utils.setLang(settings.lang || 'es');
     Utils.setCurrency(settings.currency || 'ARS');
     document.documentElement.setAttribute('data-theme', settings.theme || 'dark');
 
-    // Load custom learning rules into memory
-    this.learningRules = {};
-    try {
-      const rules = await DB.getAllLearningRules();
-      if (rules) {
-        rules.forEach(r => {
-          this.learningRules[r.keyword] = r.category;
-        });
-      }
-    } catch (err) {
-      console.error('Failed to load learning rules:', err);
-    }
-
-    this.applyTranslations();
-    this.populateRulesCategorySelect();
     this.populateCardSelects();
 
     if (!localStorage.getItem('cc_onboarded')) {
       document.getElementById('onboarding').classList.remove('hidden');
-      this.updateOnboardingInstallBtn();
     } else {
       this.navigate('dashboard');
     }
 
     this.bindEvents();
-    this.initPWA();
     Voice.init();
     Voice.onResult = (text, isFinal) => {
       document.getElementById('voiceTranscript').textContent = text;
@@ -52,80 +31,8 @@ const App = {
     Voice.onParsed = (parsed, raw) => this.handleVoiceParsed(parsed, raw);
     Voice.onStateChange = (listening) => {
       const btn = document.getElementById('voiceBtn');
-      const fab = document.getElementById('fab');
       if (btn) btn.classList.toggle('listening', listening);
-      if (fab) fab.classList.toggle('listening', listening);
     };
-  },
-
-  deferredPrompt: null,
-  initPWA() {
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      this.deferredPrompt = e;
-      const installBtn = document.getElementById('installBtnContainer');
-      if (installBtn) installBtn.style.display = 'flex';
-      this.updateOnboardingInstallBtn();
-    });
-
-    window.addEventListener('appinstalled', () => {
-      this.deferredPrompt = null;
-      const installBtn = document.getElementById('installBtnContainer');
-      if (installBtn) installBtn.style.display = 'none';
-      Utils.showToast('✅ Aplicación instalada');
-    });
-  },
-
-  async installPWA() {
-    if (!this.deferredPrompt) return;
-    this.deferredPrompt.prompt();
-    const { outcome } = await this.deferredPrompt.userChoice;
-    this.deferredPrompt = null;
-    const installBtn = document.getElementById('installBtnContainer');
-    if (installBtn) installBtn.style.display = 'none';
-    const onboardingBtn = document.getElementById('onboardingInstallContainer');
-    if (onboardingBtn) onboardingBtn.style.display = 'none';
-  },
-
-  updateOnboardingInstallBtn() {
-    const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
-    const container = document.getElementById('onboardingInstallContainer');
-    if (this.deferredPrompt && isChrome && container) {
-      container.style.display = 'flex';
-    }
-  },
-
-  showAbout() {
-    document.getElementById('aboutModalOverlay').classList.add('open');
-    document.querySelectorAll('.app-version-txt').forEach(el => el.textContent = this.VERSION);
-  },
-
-  checkVersion() {
-    const savedVersion = localStorage.getItem('cc_version');
-    if (savedVersion && savedVersion !== this.VERSION) {
-      console.log('Nueva versión detectada:', this.VERSION);
-      localStorage.setItem('cc_version', this.VERSION);
-      
-      // Clear all caches and reload
-      if ('serviceWorker' in navigator) {
-        caches.keys().then(names => {
-          for (let name of names) caches.delete(name);
-        });
-        navigator.serviceWorker.getRegistrations().then(registrations => {
-          for (let registration of registrations) registration.unregister();
-        });
-      }
-      
-      setTimeout(() => {
-        window.location.reload(true);
-      }, 500);
-    } else {
-      localStorage.setItem('cc_version', this.VERSION);
-    }
-  },
-
-  showHelp() {
-    document.getElementById('helpModalOverlay').classList.add('open');
   },
 
   populateCardSelects() {
@@ -146,55 +53,12 @@ const App = {
       item.addEventListener('click', () => this.navigate(item.dataset.page));
     });
 
-    // FAB Logic (Click and Long Press)
-    const fab = document.getElementById('fab');
-    let fabTimer;
-    let isLongPress = false;
-
-    const startVoice = () => {
-      isLongPress = true;
-      this.openAddModal();
-      Voice.start();
-      Utils.vibrate([30]);
-    };
-
-    fab.addEventListener('mousedown', () => {
-      isLongPress = false;
-      fabTimer = setTimeout(startVoice, 500);
-    });
-
-    fab.addEventListener('touchstart', () => {
-      isLongPress = false;
-      fabTimer = setTimeout(startVoice, 500);
-    }, { passive: true });
-
-    const endVoice = (e) => {
-      clearTimeout(fabTimer);
-      if (isLongPress) {
-        Voice.stop();
-        // The click event might still fire, we handle it in the click listener
-      }
-    };
-
-    fab.addEventListener('mouseup', endVoice);
-    fab.addEventListener('touchend', endVoice);
-    
-    fab.addEventListener('click', (e) => {
-      if (isLongPress) {
-        isLongPress = false;
-        return;
-      }
-      this.openAddModal();
-    });
+    // FAB
+    document.getElementById('fab').addEventListener('click', () => this.openAddModal());
 
     // Modal close
-    document.querySelectorAll('.modal-overlay').forEach(overlay => {
-      overlay.addEventListener('click', (e) => {
-        if (e.target === e.currentTarget) {
-          overlay.classList.remove('open');
-          if (overlay.id === 'modalOverlay') Voice.stop();
-        }
-      });
+    document.getElementById('modalOverlay').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) this.closeModal();
     });
 
     // Type toggle
@@ -206,25 +70,16 @@ const App = {
         btn.classList.add('active', isExpense ? 'expense-active' : 'income-active');
         document.getElementById('modalType').value = type;
         
-        // Show/hide installment fields based on category
-        this.updateInstallmentFieldsVisibility();
+        // Show/hide installment fields
+        const instFields = document.getElementById('installmentFields');
+        if (instFields) instFields.style.display = isExpense ? 'block' : 'none';
         
         // Income specific logic
-        const salaryBtn = document.getElementById('addSalaryBtn');
-        if (salaryBtn) salaryBtn.style.display = isExpense ? 'none' : 'block';
+        document.getElementById('addSalaryBtn').style.display = isExpense ? 'none' : 'block';
         document.getElementById('modalDesc').placeholder = isExpense ? '¿En qué gastaste?' : 'Descripción (opcional)';
         
         this.renderCategoryGrid();
       });
-    });
-
-    // Subscription checkbox logic
-    document.getElementById('modalIsSubscription').addEventListener('change', (e) => {
-      document.getElementById('instCountGroup').style.display = e.target.checked ? 'none' : 'block';
-    });
-    
-    document.getElementById('instIsSubscription').addEventListener('change', (e) => {
-      document.getElementById('instModalCountsGroup').style.display = e.target.checked ? 'none' : 'block';
     });
 
     // Category selection
@@ -234,47 +89,13 @@ const App = {
       document.querySelectorAll('.cat-item').forEach(c => c.classList.remove('selected'));
       item.classList.add('selected');
       document.getElementById('modalCategory').value = item.dataset.cat;
-      this.updateInstallmentFieldsVisibility();
     });
 
     // Save transaction
     document.getElementById('saveBtn').addEventListener('click', () => this.saveTransaction());
 
-    // Swipe down to close modals
-    let touchStartY = 0;
-    document.querySelectorAll('.modal').forEach(modal => {
-      modal.addEventListener('touchstart', (e) => {
-        if (modal.scrollTop <= 0) touchStartY = e.touches[0].clientY;
-        else touchStartY = 0;
-      }, { passive: true });
-
-      modal.addEventListener('touchmove', (e) => {
-        if (touchStartY === 0) return;
-        const touchY = e.touches[0].clientY;
-        const diff = touchY - touchStartY;
-        if (diff > 0) {
-          modal.style.transform = `translateY(${diff}px)`;
-          modal.style.transition = 'none';
-        }
-      }, { passive: true });
-
-      modal.addEventListener('touchend', (e) => {
-        if (touchStartY === 0) return;
-        const touchY = e.changedTouches[0].clientY;
-        const diff = touchY - touchStartY;
-        modal.style.transition = 'transform 0.3s cubic-bezier(0.16,1,0.3,1)';
-        modal.style.transform = '';
-        if (diff > 120) {
-          const overlay = modal.closest('.modal-overlay');
-          if (overlay) {
-            overlay.classList.remove('open');
-            if (overlay.id === 'modalOverlay') Voice.stop();
-          }
-        }
-      });
-    });
-
-
+    // Voice button
+    document.getElementById('voiceBtn').addEventListener('click', () => Voice.toggle());
 
     // Onboarding
     document.getElementById('onboardStart').addEventListener('click', () => this.completeOnboarding());
@@ -300,9 +121,6 @@ const App = {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
 
     // Render page content
-    const fab = document.getElementById('fab');
-    if (fab) fab.style.display = page === 'cards' ? 'none' : 'flex';
-
     switch (page) {
       case 'dashboard': this.renderDashboard(); break;
       case 'history': this.renderHistory(); break;
@@ -332,6 +150,16 @@ const App = {
     // Summary
     document.getElementById('totalIncome').textContent = Utils.formatMoney(summary.totalIncome);
     document.getElementById('totalExpenses').textContent = Utils.formatMoney(summary.totalExpenses);
+
+    // Carry-over row
+    const carryOverRow = document.getElementById('carryOverRow');
+    const carryOverAmount = document.getElementById('carryOverAmount');
+    if (summary.carryOver > 0) {
+      carryOverRow.style.display = 'flex';
+      carryOverAmount.textContent = Utils.formatMoney(summary.carryOver);
+    } else {
+      carryOverRow.style.display = 'none';
+    }
 
     // Alerts
     Alerts.renderAlerts('alertsContainer');
@@ -379,15 +207,15 @@ const App = {
     el.innerHTML = transactions.map(tx => {
       const cat = Utils.getCategoryById(tx.category);
       const sign = tx.type === 'income' ? '+' : '-';
-      const label = tx.description || Utils.getCategoryName(cat);
       return `<div class="tx-item" data-id="${tx.id}">
         <div class="tx-icon" style="background:${cat.color}20">${cat.icon}</div>
         <div class="tx-info">
-          <div class="tx-info-top">
-            <div class="tx-date">${Utils.formatDate(tx.date)}</div>
-            <div class="tx-amount ${tx.type}">${sign}${Utils.formatMoney(tx.amount)}</div>
-          </div>
-          <div class="tx-desc">${label}</div>
+          <div class="tx-category">${Utils.getCategoryName(cat)}</div>
+          <div class="tx-desc">${tx.description || ''}</div>
+        </div>
+        <div class="tx-right" style="margin-left: 10px;">
+          <div class="tx-amount ${tx.type}">${sign}${Utils.formatMoney(tx.amount)}</div>
+          <div class="tx-date">${Utils.formatDate(tx.date)}</div>
         </div>
         <div class="tx-actions">
           <button class="tx-action-btn" onclick="App.editTransaction('${tx.id}')" title="${Utils.t('edit')}">✏️</button>
@@ -411,170 +239,13 @@ const App = {
       );
     }
 
-    document.getElementById('historyMonth').textContent = `${Utils.getMonthName(this.currentMonth)} ${this.currentMonth.getFullYear()}`;
-
-    if (this.historyViewMode === 'list') {
-      filtered.sort((a, b) => {
-        if (b.date !== a.date) return b.date.localeCompare(a.date);
-        return new Date(b.createdAt) - new Date(a.createdAt);
-      });
-      this.renderTransactionList('historyList', filtered);
-    } else {
-      this.renderCategoryGroupedHistory(filtered);
-    }
-  },
-
-  setHistoryViewMode(mode) {
-    this.historyViewMode = mode;
-    const btnList = document.getElementById('btnViewList');
-    const btnCat = document.getElementById('btnViewCategory');
-    
-    if (btnList && btnCat) {
-      if (mode === 'list') {
-        btnList.classList.add('active');
-        btnList.style.background = 'rgba(255,255,255,0.1)';
-        btnList.style.color = 'var(--text-primary)';
-        
-        btnCat.classList.remove('active');
-        btnCat.style.background = 'transparent';
-        btnCat.style.color = 'var(--text-secondary)';
-      } else {
-        btnCat.classList.add('active');
-        btnCat.style.background = 'rgba(255,255,255,0.1)';
-        btnCat.style.color = 'var(--text-primary)';
-        
-        btnList.classList.remove('active');
-        btnList.style.background = 'transparent';
-        btnList.style.color = 'var(--text-secondary)';
-      }
-    }
-    this.renderHistory();
-  },
-
-  renderCategoryGroupedHistory(transactions) {
-    const listEl = document.getElementById('historyList');
-    if (!listEl) return;
-    
-    if (!transactions.length) {
-      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📝</div><div class="empty-title">${Utils.t('noTransactions')}</div><div class="empty-desc">${Utils.t('addFirst')}</div></div>`;
-      return;
-    }
-    
-    // Calculate total expenses for percentage calculation
-    const totalExpenses = transactions
-      .filter(t => t.type === 'expense')
-      .reduce((sum, t) => sum + t.amount, 0);
-      
-    // Group transactions by category ID and transaction type
-    const grouped = {};
-    transactions.forEach(t => {
-      const groupKey = `${t.category}-${t.type}`;
-      if (!grouped[groupKey]) {
-        grouped[groupKey] = {
-          category: Utils.getCategoryById(t.category),
-          type: t.type,
-          transactions: [],
-          total: 0
-        };
-      }
-      grouped[groupKey].transactions.push(t);
-      grouped[groupKey].total += t.amount;
+    filtered.sort((a, b) => {
+      if (b.date !== a.date) return b.date.localeCompare(a.date);
+      return new Date(b.createdAt) - new Date(a.createdAt);
     });
-    
-    // Convert to sorted array
-    const groups = Object.values(grouped).sort((a, b) => b.total - a.total);
-    
-    listEl.innerHTML = groups.map(g => {
-      const cat = g.category;
-      const txCount = g.transactions.length;
-      const isIncomeGroup = g.type === 'income';
-      
-      const pct = isIncomeGroup ? 0 : Utils.percentage(g.total, totalExpenses);
-      const pctLabel = isIncomeGroup ? '' : `<span style="font-size:0.75rem; color:var(--text-secondary); margin-left: 6px;">(${pct}% ${Utils.t('ofTotal')})</span>`;
-      const accordionId = `cat-accordion-${cat.id}-${g.type}`;
-      
-      g.transactions.sort((a, b) => {
-        if (b.date !== a.date) return b.date.localeCompare(a.date);
-        return new Date(b.createdAt) - new Date(a.createdAt);
-      });
-      
-      return `
-        <div class="category-group-card" style="margin-bottom: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
-          <div class="group-header" onclick="App.toggleCategoryAccordion('${accordionId}')" style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; cursor:pointer; user-select:none; transition: background 0.2s;">
-            <div style="display:flex; align-items:center; gap:12px;">
-              <div class="group-icon" style="background:${cat.color}15; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
-                ${cat.icon}
-              </div>
-              <div>
-                <h4 style="font-size:0.95rem; font-weight:700; margin:0; color:var(--text-primary);">
-                  ${Utils.getCategoryName(cat)}${isIncomeGroup ? ` (${Utils.t('income')})` : ''}
-                </h4>
-                <span style="font-size:0.75rem; color:var(--text-secondary);">
-                  ${txCount} ${txCount === 1 ? Utils.t('transactionSingle') : Utils.t('transactionPlural')}
-                </span>
-              </div>
-            </div>
-            <div style="text-align: right; display:flex; align-items:center; gap:10px;">
-              <div>
-                <div style="font-size:1.05rem; font-weight:700; color:${isIncomeGroup ? 'var(--green)' : 'var(--text-primary)'};">
-                  ${isIncomeGroup ? '+' : '-'}${Utils.formatMoney(g.total)}
-                </div>
-                ${pctLabel}
-              </div>
-              <span class="accordion-chevron" style="font-size:0.7rem; color:var(--text-muted); transition: transform 0.3s ease;">▼</span>
-            </div>
-          </div>
-          
-          ${!isIncomeGroup ? `
-            <div style="height: 3px; width: 100%; background: rgba(255,255,255,0.05);">
-              <div style="height: 100%; width: ${pct}%; background: ${cat.color}; transition: width 0.5s ease-out;"></div>
-            </div>
-          ` : ''}
-          
-          <div id="${accordionId}" class="accordion-panel" style="max-height: 0; overflow: hidden; transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: rgba(0,0,0,0.15);">
-            <div style="padding: 8px 12px; display: flex; flex-direction: column; gap: 8px;">
-              ${g.transactions.map(tx => {
-                const sign = tx.type === 'income' ? '+' : '-';
-                const label = tx.description || Utils.getCategoryName(cat);
-                return `
-                  <div class="tx-item" data-id="${tx.id}" style="margin: 0; padding: 10px; border-radius: 8px; border: none; background: rgba(255,255,255,0.02);">
-                    <div class="tx-info" style="flex:1;">
-                      <div class="tx-info-top">
-                        <div class="tx-date">${Utils.formatDate(tx.date)}</div>
-                        <div class="tx-amount ${tx.type}">${sign}${Utils.formatMoney(tx.amount)}</div>
-                      </div>
-                      <div class="tx-desc" style="font-size:0.85rem; color:var(--text-primary); margin-top:2px;">${label}</div>
-                    </div>
-                    <div class="tx-actions">
-                      <button class="tx-action-btn" onclick="App.editTransaction('${tx.id}')" title="${Utils.t('edit')}">✏️</button>
-                      <button class="tx-action-btn" onclick="App.deleteTransactionConfirm('${tx.id}')" title="${Utils.t('delete')}">🗑</button>
-                    </div>
-                  </div>
-                `;
-              }).join('')}
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
-  },
 
-  toggleCategoryAccordion(id) {
-    const panel = document.getElementById(id);
-    if (!panel) return;
-    
-    const card = panel.closest('.category-group-card');
-    const chevron = card.querySelector('.accordion-chevron');
-    const isCollapsed = !panel.style.maxHeight || panel.style.maxHeight === '0px';
-    
-    if (isCollapsed) {
-      panel.style.maxHeight = panel.scrollHeight + 'px';
-      if (chevron) chevron.style.transform = 'rotate(180deg)';
-    } else {
-      panel.style.maxHeight = '0px';
-      if (chevron) chevron.style.transform = 'rotate(0deg)';
-    }
-    Utils.vibrate([8]);
+    document.getElementById('historyMonth').textContent = `${Utils.getMonthName(this.currentMonth)} ${this.currentMonth.getFullYear()}`;
+    this.renderTransactionList('historyList', filtered);
   },
 
   // ===== REPORTS =====
@@ -634,26 +305,23 @@ const App = {
       }
       grouped[inst.cardName].items.push(inst);
       grouped[inst.cardName].totalMonthly += inst.monthlyAmount;
-      if (!inst.isSubscription) {
-        grouped[inst.cardName].totalDebt += inst.monthlyAmount * (inst.installmentCount - inst.paidInstallments);
-      }
+      grouped[inst.cardName].totalDebt += inst.monthlyAmount * (inst.installmentCount - inst.paidInstallments);
     });
 
     let html = '';
     for (const cardName in grouped) {
       const g = grouped[cardName];
       const isPaid = txsThisMonth.some(t => t.category === 'credit_card' && t.description.includes(`Pago Tarjeta - ${cardName}`));
-      const cardId = `card-details-${cardName.replace(/\s+/g, '-')}`;
       
       html += `
         <div class="card" style="margin-bottom: 16px; padding: 16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
-            <div onclick="App.toggleCardDetails('${cardId}')" style="cursor:pointer; flex:1">
-              <h3 style="font-size: 1.1rem; font-weight: 700; margin: 0;">💳 ${g.name} <span style="font-size:0.7rem; color:var(--text-muted)">▼</span></h3>
+            <div>
+              <h3 style="font-size: 1.1rem; font-weight: 700; margin: 0;">💳 ${g.name}</h3>
               <div style="font-size: 0.85rem; color: var(--text-secondary);">Deuda: ${Utils.formatMoney(g.totalDebt)}</div>
             </div>
             <div style="text-align: right;">
-              <div style="font-size: 0.85rem; color: var(--text-secondary);">${isPaid ? 'A pagar el mes que viene' : 'A pagar este mes'}</div>
+              <div style="font-size: 0.85rem; color: var(--text-secondary);">A pagar este mes</div>
               <div style="font-size: 1.1rem; font-weight: 700; color: var(--yellow);">${Utils.formatMoney(g.totalMonthly)}</div>
               <div style="font-size: 0.75rem; color: ${isPaid ? 'var(--green)' : 'var(--red)'}; font-weight: 600;">
                 ${isPaid ? '✅ PAGADO' : '⏳ ADEUDA'}
@@ -663,22 +331,19 @@ const App = {
           <button class="btn-primary" style="margin-bottom: 16px; padding: 10px;" onclick="App.openCardPayModal('${g.name}', ${g.totalMonthly}, ${isPaid})">
             Pagar Tarjeta
           </button>
-          <div id="${cardId}" style="display:none; flex-direction:column; gap: 8px;">
+          <div style="display:flex; flex-direction:column; gap: 8px;">
             ${g.items.map(inst => {
-              const isSub = !!inst.isSubscription;
-              const remaining = isSub ? '∞' : (inst.installmentCount - inst.paidInstallments);
-              const pct = isSub ? 100 : ((inst.paidInstallments / inst.installmentCount) * 100);
-              const label = isSub ? 'Suscripción Recurrente' : `Cuota ${Math.min(inst.installmentCount, inst.paidInstallments + 1)} de ${inst.installmentCount}`;
-              
+              const remaining = inst.installmentCount - inst.paidInstallments;
+              const pct = (inst.paidInstallments / inst.installmentCount) * 100;
               return `
                 <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">
                   <div style="display:flex; justify-content:space-between; margin-bottom: 4px;">
-                    <span style="font-weight: 500; font-size: 0.9rem;">${inst.productName} ${isSub ? '🔁' : ''}</span>
+                    <span style="font-weight: 500; font-size: 0.9rem;">${inst.productName}</span>
                     <span style="font-size: 0.9rem;">${Utils.formatMoney(inst.monthlyAmount)}</span>
                   </div>
                   <div class="inst-progress" style="height:4px; margin-bottom:6px;"><div class="inst-progress-fill" style="width:${pct}%"></div></div>
                   <div style="display:flex; justify-content:space-between; font-size: 0.75rem; color: var(--text-secondary);">
-                    <span>${label}</span>
+                    <span>Cuota ${Math.min(inst.installmentCount, inst.paidInstallments + 1)} de ${inst.installmentCount}</span>
                     <div style="display:flex; gap: 8px;">
                       <button class="btn-secondary" style="padding: 2px 6px; font-size: 0.75rem; width: auto; margin: 0; background: none; border: none; opacity: 0.7;" onclick="App.editInstallment('${inst.id}')">✏️</button>
                       <button class="btn-secondary" style="padding: 2px 6px; font-size: 0.75rem; width: auto; margin: 0; background: none; border: none; opacity: 0.7;" onclick="App.deleteInstallmentConfirm('${inst.id}')">🗑</button>
@@ -692,18 +357,6 @@ const App = {
       `;
     }
     listEl.innerHTML = html;
-  },
-
-  toggleCardDetails(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const isHidden = el.style.display === 'none';
-    el.style.display = isHidden ? 'flex' : 'none';
-    
-    // Rotate chevron
-    const cardHeader = el.previousElementSibling.previousElementSibling;
-    const chevron = cardHeader.querySelector('span');
-    if (chevron) chevron.textContent = isHidden ? '▲' : '▼';
   },
 
   openCardPayModal(cardName, totalMonthly, isPaid) {
@@ -764,8 +417,6 @@ const App = {
     document.getElementById('settingTheme').checked = (s.theme || 'dark') === 'dark';
     document.getElementById('settingIncome').value = s.monthlyIncome || '';
     this.renderCardSettings();
-    this.renderRulesSettings();
-    this.populateRulesCategorySelect();
   },
 
   renderCardSettings() {
@@ -776,43 +427,10 @@ const App = {
       list.innerHTML = cards.map((c, i) => `
         <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:8px;">
           <span>${c}</span>
-          <div style="display:flex; gap:8px;">
-            <button class="btn-secondary" style="padding:4px 8px; font-size:0.8rem; width:auto; margin:0;" onclick="App.editCardName(${i})">✏️</button>
-            <button class="btn-secondary" style="padding:4px 8px; font-size:0.8rem; width:auto; margin:0;" onclick="App.deleteCardFromSettings(${i})">🗑</button>
-          </div>
+          <button class="btn-secondary" style="padding:4px 8px; font-size:0.8rem; width:auto; margin:0;" onclick="App.deleteCardFromSettings(${i})">🗑</button>
         </div>
       `).join('');
     }
-  },
-
-  editCardName(index) {
-    const s = DB.getSettings();
-    const cards = s.cards || [];
-    const oldName = cards[index];
-    const newName = prompt('Nuevo nombre de la tarjeta:', oldName);
-    if (newName && newName.trim() !== '' && newName !== oldName) {
-      cards[index] = newName.trim();
-      DB.updateSetting('cards', cards);
-      this.renderCardSettings();
-      this.populateCardSelects();
-      Utils.showToast('Tarjeta actualizada');
-    }
-  },
-
-  addCardFromPage() {
-    const bank = document.getElementById('pageCardBank').value.trim();
-    const type = document.getElementById('pageCardType').value;
-    if(!bank) { Utils.showToast('Ingresa el banco', 'warning'); return; }
-    const cardName = `${bank} ${type}`;
-    const s = DB.getSettings();
-    const cards = s.cards || [];
-    if(cards.includes(cardName)) { Utils.showToast('La tarjeta ya existe', 'warning'); return; }
-    cards.push(cardName);
-    DB.updateSetting('cards', cards);
-    document.getElementById('pageCardBank').value = '';
-    this.populateCardSelects();
-    this.renderCards();
-    Utils.showToast('✅ Tarjeta agregada');
   },
 
   addCardToSettings() {
@@ -846,7 +464,6 @@ const App = {
       DB.updateSetting('lang', e.target.value);
       Utils.setLang(e.target.value);
       Voice.updateLanguage();
-      this.applyTranslations();
       this.refreshUI();
     });
 
@@ -875,16 +492,8 @@ const App = {
       const text = await file.text();
       const ok = await DB.importData(text);
       Utils.showToast(ok ? '✅ Importado' : '❌ Error', ok ? 'success' : 'error');
-      this.applyTranslations();
       this.refreshUI();
     });
-  },
-
-  async manualMigration() {
-    Utils.showToast('Buscando datos antiguos...', 'info');
-    localStorage.removeItem('cc_db_migrated');
-    await DB.migrate();
-    this.refreshUI();
   },
 
   refreshUI() {
@@ -929,62 +538,21 @@ const App = {
     const instFields = document.getElementById('installmentFields');
     if (instFields) {
       instFields.style.display = isExpense ? 'block' : 'none';
-      const isSub = !!defaults.isSubscription;
-      document.getElementById('modalIsSubscription').checked = isSub;
-      document.getElementById('instCountGroup').style.display = isSub ? 'none' : 'block';
-      document.getElementById('instCount').value = defaults.installmentCount && defaults.installmentCount < 9999 ? defaults.installmentCount : '';
+      document.getElementById('instCount').value = defaults.installmentCount || '';
       document.getElementById('instCard').value = defaults.cardName || '';
     }
     
-    const salaryBtn = document.getElementById('addSalaryBtn');
-    if (salaryBtn) salaryBtn.style.display = isExpense ? 'none' : 'block';
+    document.getElementById('addSalaryBtn').style.display = isExpense ? 'none' : 'block';
     document.getElementById('modalDesc').placeholder = isExpense ? '¿En qué gastaste?' : 'Descripción (opcional)';
 
     // Render categories
     this.renderCategoryGrid();
-    this.updateInstallmentFieldsVisibility();
-    this.resetAmounts();
-  },
-
-  updateInstallmentFieldsVisibility() {
-    const type = document.getElementById('modalType').value;
-    const cat = document.getElementById('modalCategory').value;
-    const instFields = document.getElementById('installmentFields');
-    if (instFields) {
-      instFields.style.display = (type === 'expense' && cat === 'credit_card') ? 'block' : 'none';
-    }
-  },
-
-  addAmountToList() {
-    const input = document.getElementById('modalAmount');
-    const val = parseFloat(input.value);
-    if (!val || val <= 0) return;
-    
-    this.pendingAmounts.push(val);
-    input.value = '';
-    this.updateSumDisplay();
-    Utils.vibrate([10]);
-  },
-
-  updateSumDisplay() {
-    const display = document.getElementById('amountSumDisplay');
-    if (this.pendingAmounts.length > 0) {
-      const sum = this.pendingAmounts.reduce((a, b) => a + b, 0);
-      display.textContent = `Suma total: ${Utils.formatMoney(sum)} (${this.pendingAmounts.length} montos)`;
-      display.style.display = 'block';
-    } else {
-      display.style.display = 'none';
-    }
-  },
-
-  resetAmounts() {
-    this.pendingAmounts = [];
-    this.updateSumDisplay();
   },
 
   renderCategoryGrid() {
     const type = document.getElementById('modalType').value;
     const cats = Utils.defaultCategories.filter(c => {
+      if (c.id === 'carry_over') return false; // Never show carry_over in manual entry
       if (type === 'income') return ['salary', 'freelance', 'investment', 'other'].includes(c.id);
       return !['salary', 'freelance', 'investment'].includes(c.id);
     });
@@ -1008,13 +576,7 @@ const App = {
   },
 
   async saveTransaction() {
-    let amount = parseFloat(document.getElementById('modalAmount').value) || 0;
-    
-    // Add pending amounts if any
-    if (this.pendingAmounts.length > 0) {
-      amount += this.pendingAmounts.reduce((a, b) => a + b, 0);
-    }
-
+    const amount = parseFloat(document.getElementById('modalAmount').value);
     if (!amount || amount <= 0) { Utils.showToast('Ingresá un monto válido', 'error'); return; }
 
     const type = document.getElementById('modalType').value;
@@ -1033,55 +595,22 @@ const App = {
         tx.description = description;
         tx.date = date;
         await DB.updateTransaction(tx);
-        
-        // Auto-learn/update categorization rule
-        if (description && description.trim().length > 0 && description.trim().length <= 35) {
-          const cleaned = Utils.cleanKeyword(description);
-          if (cleaned) {
-            this.learningRules[cleaned] = category;
-            await DB.saveLearningRule(cleaned, category);
-          }
-        }
-        
         Utils.showToast('✅ Editado correctamente');
       }
       this.editingTransaction = null;
     } else {
       // If installment purchase
-      const isSubscription = document.getElementById('modalIsSubscription').checked;
-      if (type === 'expense' && (isSubscription || (instCount && parseInt(instCount) >= 1))) {
+      if (instCount && parseInt(instCount) > 1 && type === 'expense') {
         await DB.addInstallment({
           productName: description || Utils.getCategoryName(Utils.getCategoryById(category)),
           totalAmount: amount,
-          installmentCount: isSubscription ? 9999 : parseInt(instCount),
+          installmentCount: parseInt(instCount),
           cardName: instCard || 'Visa',
           startDate: date,
-          isSubscription: isSubscription
         });
-        const msg = isSubscription ? '✅ Suscripción guardada' : `✅ ${Utils.t('saved')} — ${instCount} cuotas de ${Utils.formatMoney(amount / parseInt(instCount))}`;
-        Utils.showToast(msg);
-        
-        // Auto-learn categorization rule for installments
-        const instDesc = description || Utils.getCategoryName(Utils.getCategoryById(category));
-        if (instDesc && instDesc.trim().length > 0 && instDesc.trim().length <= 35) {
-          const cleaned = Utils.cleanKeyword(instDesc);
-          if (cleaned) {
-            this.learningRules[cleaned] = category;
-            await DB.saveLearningRule(cleaned, category);
-          }
-        }
+        Utils.showToast(`✅ ${Utils.t('saved')} — ${instCount} cuotas de ${Utils.formatMoney(amount / parseInt(instCount))}`);
       } else {
         await DB.addTransaction({ type, amount, category, description, date });
-        
-        // Auto-learn categorization rule
-        if (description && description.trim().length > 0 && description.trim().length <= 35) {
-          const cleaned = Utils.cleanKeyword(description);
-          if (cleaned) {
-            this.learningRules[cleaned] = category;
-            await DB.saveLearningRule(cleaned, category);
-          }
-        }
-        
         Utils.showToast(Utils.t('saved'));
       }
     }
@@ -1121,40 +650,17 @@ const App = {
     document.getElementById('instModalOverlay').classList.add('open');
     document.getElementById('editingInstallmentId').value = defaults.id || '';
     document.getElementById('instProductName').value = defaults.productName || '';
-    document.getElementById('instTotalAmount').value = defaults.totalAmount || (defaults.isSubscription ? defaults.monthlyAmount : '');
-    
-    const isSub = !!defaults.isSubscription;
-    document.getElementById('instIsSubscription').checked = isSub;
-    document.getElementById('instModalCountsGroup').style.display = isSub ? 'none' : 'block';
-    document.getElementById('instTotalCount').value = (isSub || !defaults.installmentCount || defaults.installmentCount >= 9999) ? '' : defaults.installmentCount;
+    document.getElementById('instTotalAmount').value = defaults.totalAmount || '';
+    document.getElementById('instTotalCount').value = defaults.installmentCount || '';
     
     const paidCountEl = document.getElementById('instPaidCount');
     if (paidCountEl) {
+      // Si editamos, mostramos la cuota actual (pagadas + 1)
       paidCountEl.value = defaults.id ? (defaults.paidInstallments + 1) : 1;
     }
     
     const cardField = document.getElementById('instCardName');
     cardField.value = defaults.cardName || 'Visa';
-
-    // Reset validation styles and values
-    const fields = ['instProductName', 'instTotalAmount', 'instTotalCount', 'instPaidCount'];
-    fields.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.style.borderColor = '';
-    });
-
-    this.setInstAmountMode('total');
-    
-    // Toggle mode group visibility based on subscription
-    const updateVisibility = () => {
-      const isSub = document.getElementById('instIsSubscription').checked;
-      document.getElementById('instAmountModeGroup').style.display = isSub ? 'none' : 'block';
-      if (isSub) this.setInstAmountMode('monthly');
-      else this.setInstAmountMode('total');
-    };
-    
-    document.getElementById('instIsSubscription').onchange = updateVisibility;
-    updateVisibility();
 
     // Close on overlay click
     document.getElementById('instModalOverlay').onclick = (e) => {
@@ -1164,60 +670,24 @@ const App = {
     };
   },
 
-  setInstAmountMode(mode) {
-    const isTotal = mode === 'total';
-    document.getElementById('instAmountMode').value = mode;
-    document.getElementById('modeTotal').classList.toggle('active', isTotal);
-    document.getElementById('modeMonthly').classList.toggle('active', !isTotal);
-    document.getElementById('instAmountLabel').textContent = isTotal ? 'Monto Total de la Compra' : 'Monto de cada Cuota (Mensual)';
-    document.getElementById('instTotalAmount').placeholder = isTotal ? '0.00' : '0.00';
-  },
-
   async saveInstallment() {
     const editId = document.getElementById('editingInstallmentId').value;
     const name = document.getElementById('instProductName').value;
-    let amount = parseFloat(document.getElementById('instTotalAmount').value);
-    const amountMode = document.getElementById('instAmountMode').value;
-    const isSubscription = document.getElementById('instIsSubscription').checked;
-    const count = isSubscription ? 9999 : parseInt(document.getElementById('instTotalCount').value);
-
-    if (amountMode === 'monthly' && !isSubscription) {
-      amount = amount * count;
-    }
-
+    const amount = parseFloat(document.getElementById('instTotalAmount').value);
+    const count = parseInt(document.getElementById('instTotalCount').value);
     // Usuario ingresa "Cuota actual", nosotros guardamos "Cuotas pagadas" (actual - 1)
-    const currentCount = isSubscription ? 1 : (parseInt(document.getElementById('instPaidCount')?.value) || 1);
+    const currentCount = parseInt(document.getElementById('instPaidCount')?.value) || 1;
     const paidCount = Math.max(0, currentCount - 1);
     const card = document.getElementById('instCardName').value;
 
-    // Reset styles
-    const fields = ['instProductName', 'instTotalAmount', 'instTotalCount', 'instPaidCount'];
-    fields.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.style.borderColor = '';
-    });
-
-    if (!name) {
-      document.getElementById('instProductName').style.borderColor = 'var(--red)';
-      Utils.showToast('Ingresá el nombre del producto', 'error');
+    if (!name || !amount || !count || count < 2) {
+      Utils.showToast('Completá todos los campos', 'error');
       return;
     }
-    if (!amount || amount <= 0) {
-      document.getElementById('instTotalAmount').style.borderColor = 'var(--red)';
-      Utils.showToast('Ingresá un monto válido', 'error');
+    
+    if (paidCount >= count) {
+      Utils.showToast('La cuota actual no puede ser mayor al total', 'error');
       return;
-    }
-    if (!isSubscription) {
-      if (!count || count < 1) {
-        document.getElementById('instTotalCount').style.borderColor = 'var(--red)';
-        Utils.showToast('La cantidad de cuotas debe ser al menos 1', 'error');
-        return;
-      }
-      if (currentCount < 1 || currentCount > count) {
-        document.getElementById('instPaidCount').style.borderColor = 'var(--red)';
-        Utils.showToast('La cuota actual no es válida', 'error');
-        return;
-      }
     }
 
     if (editId) {
@@ -1228,9 +698,8 @@ const App = {
         inst.installmentCount = count;
         inst.paidInstallments = paidCount;
         inst.cardName = card || 'Visa';
-        inst.isSubscription = isSubscription;
         await DB.updateInstallment(inst);
-        Utils.showToast('✅ Actualizado correctamente');
+        Utils.showToast('✅ Cuotas actualizadas');
       }
     } else {
       await DB.addInstallment({
@@ -1239,10 +708,8 @@ const App = {
         installmentCount: count,
         paidCount: paidCount,
         cardName: card || 'Visa',
-        isSubscription: isSubscription
       });
-      const msg = isSubscription ? '✅ Suscripción guardada' : `✅ ${count} cuotas de ${Utils.formatMoney(amount / count)}`;
-      Utils.showToast(msg);
+      Utils.showToast(`✅ ${count} cuotas de ${Utils.formatMoney(amount / count)}`);
     }
 
     Utils.vibrate([10, 50, 10]);
@@ -1262,26 +729,14 @@ const App = {
       if (parsed.installmentCount && parsed.installmentCount > 1 && parsed.type === 'expense') {
         const s = DB.getSettings();
         const defaultCard = (s.cards && s.cards.length > 0) ? s.cards[0] : 'Visa';
-        const productName = parsed.description || Utils.getCategoryName(Utils.getCategoryById(parsed.category));
         await DB.addInstallment({
-          productName: productName,
+          productName: parsed.description || Utils.getCategoryName(Utils.getCategoryById(parsed.category)),
           totalAmount: parsed.amount,
-          installmentCount: parsed.isSubscription ? 9999 : (parsed.installmentCount || 12),
+          installmentCount: parsed.installmentCount,
           cardName: parsed.cardName || defaultCard,
           startDate: Utils.getToday(),
-          isSubscription: !!parsed.isSubscription
         });
-        const msg = parsed.isSubscription ? `✅ Suscripción guardada: ${Utils.formatMoney(parsed.amount)}` : `✅ Guardado: ${parsed.installmentCount} cuotas de ${Utils.formatMoney(parsed.amount / parsed.installmentCount)}`;
-        Utils.showToast(msg);
-        
-        // Auto-learn rule from voice installment
-        if (productName && productName.trim().length > 0 && productName.trim().length <= 35) {
-          const cleaned = Utils.cleanKeyword(productName);
-          if (cleaned) {
-            this.learningRules[cleaned] = parsed.category;
-            await DB.saveLearningRule(cleaned, parsed.category);
-          }
-        }
+        Utils.showToast(`✅ Guardado: ${parsed.installmentCount} cuotas de ${Utils.formatMoney(parsed.amount / parsed.installmentCount)}`);
       } else {
         await DB.addTransaction({
           type: parsed.type,
@@ -1290,21 +745,10 @@ const App = {
           description: parsed.description,
           date: Utils.getToday()
         });
-        
-        // Auto-learn rule from voice transaction
-        if (parsed.description && parsed.description.trim().length > 0 && parsed.description.trim().length <= 35) {
-          const cleaned = Utils.cleanKeyword(parsed.description);
-          if (cleaned) {
-            this.learningRules[cleaned] = parsed.category;
-            await DB.saveLearningRule(cleaned, parsed.category);
-          }
-        }
-        
         Utils.showToast('✅ Guardado por voz');
       }
       Utils.vibrate([10, 50, 10]);
-      this.closeModal();
-      this.navigate('dashboard');
+      this.navigate(this.currentPage);
     } else {
       Utils.showToast(Utils.t('voiceError'), 'error');
     }
@@ -1326,6 +770,8 @@ const App = {
   },
 
   completeOnboarding() {
+    const income = parseFloat(document.getElementById('onboardIncome').value) || 0;
+    if (income > 0) DB.updateSetting('monthlyIncome', income);
     localStorage.setItem('cc_onboarded', 'true');
     document.getElementById('onboarding').classList.add('hidden');
     this.navigate('dashboard');
@@ -1339,122 +785,6 @@ const App = {
   nextMonth() {
     this.currentMonth = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 1, 1);
     this.navigate(this.currentPage);
-  },
-
-  // ===== TRANSLATIONS & LEARNING RULES HELPERS =====
-  applyTranslations() {
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-      const key = el.getAttribute('data-i18n');
-      const text = Utils.t(key);
-      if (text !== key) {
-        el.innerHTML = text;
-      }
-    });
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-      const key = el.getAttribute('data-i18n-placeholder');
-      const text = Utils.t(key);
-      if (text !== key) {
-        el.placeholder = text;
-      }
-    });
-  },
-
-  populateRulesCategorySelect() {
-    const select = document.getElementById('newRuleCategory');
-    if (select) {
-      select.innerHTML = Utils.defaultCategories
-        .map(c => `<option value="${c.id}">${c.icon} ${Utils.getCategoryName(c)}</option>`)
-        .join('');
-    }
-  },
-
-  renderRulesSettings() {
-    const listEl = document.getElementById('settingsRulesList');
-    if (!listEl) return;
-    
-    const rules = Object.entries(this.learningRules);
-    if (rules.length === 0) {
-      listEl.innerHTML = `
-        <div style="font-size:0.8rem; color:var(--text-secondary); text-align:center; padding:16px;" data-i18n="noRules">
-          ${Utils.t('noRules')}
-        </div>
-      `;
-      return;
-    }
-    
-    rules.sort((a, b) => a[0].localeCompare(b[0]));
-    
-    listEl.innerHTML = rules.map(([keyword, categoryId]) => {
-      const cat = Utils.getCategoryById(categoryId);
-      return `
-        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.04); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.03);">
-          <div style="display:flex; flex-direction:column; gap:2px;">
-            <span style="font-size:0.9rem; font-weight:600; color:var(--text-primary);">${keyword}</span>
-            <span style="font-size:0.75rem; color:${cat.color}; font-weight:500; display:flex; align-items:center; gap:4px;">
-              <span>${cat.icon}</span> <span>${Utils.getCategoryName(cat)}</span>
-            </span>
-          </div>
-          <button class="btn-secondary" style="padding:6px 10px; font-size:0.8rem; width:auto; margin:0; background:none; border:none; opacity:0.8; cursor:pointer;" onclick="App.deleteCustomRule('${keyword.replace(/'/g, "\\'")}')" title="${Utils.t('delete')}">🗑</button>
-        </div>
-      `;
-    }).join('');
-  },
-
-  async addCustomRuleFromSettings() {
-    const keywordInput = document.getElementById('newRuleKeyword');
-    const categorySelect = document.getElementById('newRuleCategory');
-    if (!keywordInput || !categorySelect) return;
-    
-    const rawKeyword = keywordInput.value.trim();
-    const category = categorySelect.value;
-    
-    if (!rawKeyword) {
-      Utils.showToast(Utils.t('enterKeywordError'), 'error');
-      keywordInput.style.borderColor = 'var(--red)';
-      return;
-    }
-    keywordInput.style.borderColor = '';
-    
-    const cleaned = Utils.cleanKeyword(rawKeyword);
-    if (!cleaned) {
-      Utils.showToast(Utils.t('enterKeywordError'), 'error');
-      return;
-    }
-    
-    this.learningRules[cleaned] = category;
-    await DB.saveLearningRule(cleaned, category);
-    
-    keywordInput.value = '';
-    this.renderRulesSettings();
-    Utils.showToast(Utils.t('ruleAdded'));
-    Utils.vibrate([10]);
-  },
-
-  async deleteCustomRule(keyword) {
-    const cleaned = Utils.cleanKeyword(keyword);
-    if (this.learningRules[cleaned]) {
-      delete this.learningRules[cleaned];
-      await DB.deleteLearningRule(cleaned);
-      this.renderRulesSettings();
-      Utils.showToast(Utils.t('deleted'));
-      Utils.vibrate([10]);
-    }
-  },
-
-  toggleSettingsGroup(id) {
-    const panel = document.getElementById(id);
-    if (!panel) return;
-    
-    const isHidden = !panel.style.display || panel.style.display === 'none';
-    panel.style.display = isHidden ? 'flex' : 'none';
-    
-    // Rotate chevron
-    const header = panel.previousElementSibling;
-    const chevron = header ? header.querySelector('.settings-chevron') : null;
-    if (chevron) {
-      chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
-    }
-    Utils.vibrate([8]);
   },
 };
 

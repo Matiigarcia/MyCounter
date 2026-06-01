@@ -1,22 +1,14 @@
 // ============================================================
-// CuentasClaras — IndexedDB Data Layer
+// CuentaClara — IndexedDB Data Layer
 // ============================================================
 
 const DB = {
   db: null,
-  DB_NAME: 'CuentasClarasDB',
-  DB_VERSION: 3,
+  DB_NAME: 'CuentaClaraDB',
+  DB_VERSION: 2,
 
   // ---- Initialize Database ----
   async init() {
-    // Request persistent storage to prevent automatic eviction
-    if (navigator.storage && navigator.storage.persist) {
-      navigator.storage.persist().then(granted => {
-        console.log('Storage persisted:', granted);
-      });
-    }
-
-    await this.migrate();
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
 
@@ -42,11 +34,6 @@ const DB = {
         // Budgets store
         if (!db.objectStoreNames.contains('budgets')) {
           db.createObjectStore('budgets', { keyPath: 'category' });
-        }
-
-        // Learning rules store
-        if (!db.objectStoreNames.contains('learningRules')) {
-          db.createObjectStore('learningRules', { keyPath: 'keyword' });
         }
       };
 
@@ -148,11 +135,16 @@ const DB = {
     const transactions = await this.getTransactionsByMonth(monthYear);
     let totalIncome = 0;
     let totalExpenses = 0;
+    let carryOver = 0;
     const byCategory = {};
 
     transactions.forEach(t => {
       if (t.type === 'income') {
-        totalIncome += t.amount;
+        if (t.category === 'carry_over') {
+          carryOver += t.amount;
+        } else {
+          totalIncome += t.amount;
+        }
       } else {
         totalExpenses += t.amount;
         if (!byCategory[t.category]) {
@@ -164,12 +156,46 @@ const DB = {
 
     return {
       totalIncome,
+      carryOver,
       totalExpenses,
-      balance: totalIncome - totalExpenses,
+      balance: totalIncome + carryOver - totalExpenses,
       byCategory,
       transactionCount: transactions.length,
       transactions,
     };
+  },
+
+  async checkAndCreateCarryOver() {
+    const now = new Date();
+    const currentMonthYear = Utils.getMonthYear(now);
+
+    // Check if a carry-over already exists for the current month
+    const currentTxs = await this.getTransactionsByMonth(currentMonthYear);
+    const existing = currentTxs.find(t => t.category === 'carry_over');
+    if (existing) return null; // Already created, skip
+
+    // Calculate previous month's balance
+    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthYear = Utils.getMonthYear(prevDate);
+    const prevSummary = await this.getMonthSummary(prevMonthYear);
+
+    // Only carry over if positive balance
+    if (prevSummary.balance <= 0) return null;
+
+    // Get previous month name for the description
+    const prevMonthName = Utils.getMonthName(prevDate);
+
+    // Create the carry-over transaction on the 1st of the current month
+    const firstDay = `${currentMonthYear}-01`;
+    const tx = await this.addTransaction({
+      type: 'income',
+      amount: prevSummary.balance,
+      category: 'carry_over',
+      description: Utils.t('carryOverDesc', { month: prevMonthName }),
+      date: firstDay,
+    });
+
+    return tx;
   },
 
   async getRecentTransactions(limit = 5) {
@@ -204,22 +230,18 @@ const DB = {
   // ============================================================
 
   async addInstallment(installment) {
-    const isSubscription = !!installment.isSubscription;
-    const count = isSubscription ? 9999 : parseInt(installment.installmentCount);
-    const monthlyAmount = isSubscription ? parseFloat(installment.totalAmount) : (parseFloat(installment.totalAmount) / count);
-    
+    const monthlyAmount = parseFloat(installment.totalAmount) / parseInt(installment.installmentCount);
     const data = {
       id: Utils.generateId(),
       productName: installment.productName,
-      totalAmount: isSubscription ? 0 : parseFloat(installment.totalAmount),
-      installmentCount: count,
+      totalAmount: parseFloat(installment.totalAmount),
+      installmentCount: parseInt(installment.installmentCount),
       paidInstallments: parseInt(installment.paidCount) || 0,
       monthlyAmount: Math.round(monthlyAmount * 100) / 100,
       cardName: installment.cardName || 'Visa',
       startDate: installment.startDate || Utils.getToday(),
       startMonthYear: installment.startDate ? installment.startDate.substring(0, 7) : Utils.getMonthYear(),
       active: true,
-      isSubscription: isSubscription,
       createdAt: new Date().toISOString(),
     };
     const store = this._getStore('installments', 'readwrite');
@@ -230,7 +252,7 @@ const DB = {
   async getActiveInstallments() {
     const store = this._getStore('installments');
     const all = await this._promisify(store.getAll());
-    return all.filter(inst => inst.active && (inst.isSubscription || inst.paidInstallments < inst.installmentCount));
+    return all.filter(inst => inst.active && inst.paidInstallments < inst.installmentCount);
   },
 
   async getAllInstallments() {
@@ -245,14 +267,8 @@ const DB = {
 
   async updateInstallment(inst) {
     const store = this._getStore('installments', 'readwrite');
-    if (inst.isSubscription) {
-      inst.monthlyAmount = Math.round(parseFloat(inst.totalAmount || inst.monthlyAmount) * 100) / 100;
-      inst.totalAmount = 0;
-      inst.installmentCount = 9999;
-    } else {
-      const monthlyAmount = parseFloat(inst.totalAmount) / parseInt(inst.installmentCount);
-      inst.monthlyAmount = Math.round(monthlyAmount * 100) / 100;
-    }
+    const monthlyAmount = parseFloat(inst.totalAmount) / parseInt(inst.installmentCount);
+    inst.monthlyAmount = Math.round(monthlyAmount * 100) / 100;
     return this._promisify(store.put(inst));
   },
 
@@ -280,10 +296,8 @@ const DB = {
     let monthlyPayment = 0;
 
     active.forEach(inst => {
-      if (!inst.isSubscription) {
-        const remaining = inst.installmentCount - inst.paidInstallments;
-        totalDebt += inst.monthlyAmount * remaining;
-      }
+      const remaining = inst.installmentCount - inst.paidInstallments;
+      totalDebt += inst.monthlyAmount * remaining;
       monthlyPayment += inst.monthlyAmount;
     });
 
@@ -317,25 +331,6 @@ const DB = {
   async deleteBudget(category) {
     const store = this._getStore('budgets', 'readwrite');
     return this._promisify(store.delete(category));
-  },
-
-  // ============================================================
-  // LEARNING RULES (Custom Categorization Vocabulary)
-  // ============================================================
-
-  async saveLearningRule(keyword, category) {
-    const store = this._getStore('learningRules', 'readwrite');
-    await this._promisify(store.put({ keyword: keyword.toLowerCase().trim(), category }));
-  },
-
-  async deleteLearningRule(keyword) {
-    const store = this._getStore('learningRules', 'readwrite');
-    return this._promisify(store.delete(keyword.toLowerCase().trim()));
-  },
-
-  async getAllLearningRules() {
-    const store = this._getStore('learningRules');
-    return this._promisify(store.getAll());
   },
 
   // ============================================================
@@ -375,16 +370,14 @@ const DB = {
     const transactions = await this.getAllTransactions();
     const installments = await this.getAllInstallments();
     const budgets = await this.getAllBudgets();
-    const learningRules = await this.getAllLearningRules();
     const settings = this.getSettings();
 
     const data = {
-      version: 2,
+      version: 1,
       exportedAt: new Date().toISOString(),
       transactions,
       installments,
       budgets,
-      learningRules,
       settings,
     };
 
@@ -444,13 +437,7 @@ const DB = {
           await this._promisify(store.put(b));
         }
       }
-
-      if (data.learningRules) {
-        const store = this._getStore('learningRules', 'readwrite');
-        for (const lr of data.learningRules) {
-          await this._promisify(store.put(lr));
-        }
-      }
+// Versión de DB actualizada para soportar edición de cuotas.
 
       if (data.settings) {
         this.saveSettings(data.settings);
@@ -461,115 +448,5 @@ const DB = {
       console.error('Import error:', e);
       return false;
     }
-  },
-
-  // ============================================================
-  // MIGRATION (from old 'Pocket Accountant' version)
-  // ============================================================
-
-  async migrate() {
-    try {
-      // 1. Migrate LocalStorage
-      const oldPrefixes = ['pa_', 'pocket_', 'conta_', 'cuentaclara_'];
-      const keys = ['settings', 'onboarded', 'lang', 'currency'];
-
-      for (const oldPre of oldPrefixes) {
-        for (const k of keys) {
-          const oldVal = localStorage.getItem(oldPre + k);
-          const newVal = 'cc_' + k;
-          if (oldVal && !localStorage.getItem(newVal)) {
-            localStorage.setItem(newVal, oldVal);
-          }
-        }
-      }
-
-      // 2. Migrate IndexedDB
-      const OLD_DB_NAMES = [
-        'cuentaclara', 'cuentaclaraDB', 'cuenta_clara', 'CuentaClaraDB'
-      ];
-      
-      const isMigratedKey = 'cc_db_migrated';
-      if (localStorage.getItem(isMigratedKey)) return;
-
-      let dbsToTry = [...OLD_DB_NAMES];
-      
-      console.log('Intentando recuperar datos de versiones anteriores (singular):', dbsToTry);
-
-      for (const dbName of dbsToTry) {
-        try {
-          const oldDB = await new Promise((resolve, reject) => {
-            const req = indexedDB.open(dbName);
-            req.onsuccess = () => resolve(req.result);
-            req.onerror = () => reject(req.error);
-          });
-
-          if (oldDB.objectStoreNames.length === 0 || !oldDB.objectStoreNames.contains('transactions')) {
-            oldDB.close();
-            // Si la acabamos de crear vacía, la borramos para no ensuciar
-            if (!OLD_DB_NAMES.includes(dbName)) indexedDB.deleteDatabase(dbName);
-            continue; 
-          }
-
-          console.log(`¡Base de datos encontrada!: ${dbName}. Migrando...`);
-
-          const stores = ['transactions', 'installments', 'budgets'];
-          const data = {};
-
-          for (const storeName of stores) {
-            if (oldDB.objectStoreNames.contains(storeName)) {
-              const tx = oldDB.transaction(storeName, 'readonly');
-              const store = tx.objectStore(storeName);
-              data[storeName] = await new Promise((resolve) => {
-                const req = store.getAll();
-                req.onsuccess = () => resolve(req.result);
-              });
-            }
-          }
-
-          oldDB.close();
-
-          if (Object.values(data).some(arr => arr && arr.length > 0)) {
-            // Initialize NEW DB
-            await this.initNewDB();
-
-            for (const [storeName, items] of Object.entries(data)) {
-              if (!items || items.length === 0) continue;
-              const tx = this.db.transaction(storeName, 'readwrite');
-              const store = tx.objectStore(storeName);
-              for (const item of items) {
-                store.put(item);
-              }
-            }
-            console.log('IndexedDB migration successful');
-            Utils.showToast('✅ Datos recuperados de la versión anterior');
-          }
-        } catch (e) {
-          console.warn(`Error al intentar migrar ${dbName}:`, e);
-        }
-      }
-      
-      localStorage.setItem(isMigratedKey, 'true');
-    } catch (err) {
-      console.warn('Migration failed:', err);
-    }
-  },
-
-  async initNewDB() {
-    if (this.db) return;
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
-      request.onupgradeneeded = (event) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains('transactions')) db.createObjectStore('transactions', { keyPath: 'id' });
-        if (!db.objectStoreNames.contains('installments')) db.createObjectStore('installments', { keyPath: 'id' });
-        if (!db.objectStoreNames.contains('budgets')) db.createObjectStore('budgets', { keyPath: 'category' });
-        if (!db.objectStoreNames.contains('learningRules')) db.createObjectStore('learningRules', { keyPath: 'keyword' });
-      };
-      request.onsuccess = (event) => {
-        this.db = event.target.result;
-        resolve();
-      };
-      request.onerror = () => reject();
-    });
   },
 };
