@@ -184,8 +184,6 @@ const Utils = {
       cardPayBtnText: 'Registrar Pago',
       confirmModalTitle: '¿Estás seguro?',
       confirmModalDesc: 'Esta acción no se puede deshacer.',
-      carryOverDesc: 'Saldo sobrante de {month}',
-      previousBalance: 'Saldo Anterior',
     },
     en: {
       appName: 'CuentasClaras',
@@ -364,8 +362,6 @@ const Utils = {
       cardPayBtnText: 'Register Payment',
       confirmModalTitle: 'Are you sure?',
       confirmModalDesc: 'This action cannot be undone.',
-      carryOverDesc: 'Leftover balance from {month}',
-      previousBalance: 'Previous Balance',
     }
   },
 
@@ -490,7 +486,6 @@ const Utils = {
     { id: 'freelance', icon: '💻', name_es: 'Freelance', name_en: 'Freelance', color: '#1ABC9C' },
     { id: 'investment', icon: '📈', name_es: 'Inversiones', name_en: 'Investments', color: '#F39C12' },
     { id: 'credit_card', icon: '💳', name_es: 'Tarjeta de Crédito', name_en: 'Credit Card', color: '#8B5CF6' },
-    { id: 'carry_over', icon: '🔄', name_es: 'Saldo Anterior', name_en: 'Previous Balance', color: '#6C63FF' },
   ],
 
   getCategoryName(cat) {
