@@ -1,6 +1,6 @@
 {
-  "name": "CuentaClara - Tu Contador Personal",
-  "short_name": "CuentaClara",
+  "name": "CuentasClaras - Tu Contador Personal",
+  "short_name": "CuentasClaras",
   "description": "Lleva tu contabilidad personal de forma rápida, sencilla y sin tediosidad. Tu contador en el bolsillo.",
   "start_url": "./index.html",
   "display": "standalone",
