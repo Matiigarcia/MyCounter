@@ -148,11 +148,16 @@ const DB = {
     const transactions = await this.getTransactionsByMonth(monthYear);
     let totalIncome = 0;
     let totalExpenses = 0;
+    let carryOver = 0;
     const byCategory = {};
 
     transactions.forEach(t => {
       if (t.type === 'income') {
-        totalIncome += t.amount;
+        if (t.category === 'carry_over') {
+          carryOver += t.amount;
+        } else {
+          totalIncome += t.amount;
+        }
       } else {
         totalExpenses += t.amount;
         if (!byCategory[t.category]) {
@@ -164,8 +169,9 @@ const DB = {
 
     return {
       totalIncome,
+      carryOver,
       totalExpenses,
-      balance: totalIncome - totalExpenses,
+      balance: totalIncome + carryOver - totalExpenses,
       byCategory,
       transactionCount: transactions.length,
       transactions,
@@ -197,6 +203,56 @@ const DB = {
     }
 
     return result;
+  },
+
+  // ---- Carry-Over: Auto-create previous month leftover ----
+  async checkAndCreateCarryOver() {
+    try {
+      const now = new Date();
+      const currentMonthYear = Utils.getMonthYear(now);
+
+      // 1. Check if carry-over already exists for current month
+      const currentTxs = await this.getTransactionsByMonth(currentMonthYear);
+      const existingCarryOver = currentTxs.find(t => t.category === 'carry_over');
+      if (existingCarryOver) {
+        return null;
+      }
+
+      // 2. Calculate previous month's balance
+      const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const prevMonthYear = Utils.getMonthYear(prevMonth);
+      const prevSummary = await this.getMonthSummary(prevMonthYear);
+
+      // 3. Only carry over positive balance
+      if (prevSummary.balance <= 0) {
+        return null;
+      }
+
+      // 4. Create carry-over transaction
+      const prevMonthName = Utils.t('monthNames')[prevMonth.getMonth()];
+      const description = Utils.t('carryOverDesc', { month: prevMonthName });
+      const firstDayOfMonth = `${currentMonthYear}-01`;
+
+      const data = {
+        id: Utils.generateId(),
+        type: 'income',
+        amount: Math.round(prevSummary.balance * 100) / 100,
+        category: 'carry_over',
+        description: description,
+        date: firstDayOfMonth,
+        monthYear: currentMonthYear,
+        isCarryOver: true,
+        createdAt: new Date().toISOString(),
+      };
+
+      const store = this._getStore('transactions', 'readwrite');
+      await this._promisify(store.add(data));
+      console.log('Carry-over creado:', data.amount, 'de', prevMonthName);
+      return data;
+    } catch (err) {
+      console.error('Error al crear carry-over:', err);
+      return null;
+    }
   },
 
   // ============================================================

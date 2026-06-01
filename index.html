@@ -63,6 +63,18 @@
       </div>
     </div>
 
+    <!-- Carry-Over Row (hidden by default) -->
+    <div id="carryOverRow" class="card" style="display:none; padding: 12px 16px; margin-bottom: 12px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="font-size:1.2rem;">🔄</div>
+        <div style="flex:1;">
+          <div style="font-size:0.8rem; color:var(--text-secondary);" data-i18n="previousBalance">Saldo Anterior</div>
+          <div id="carryOverAmount" style="font-size:1.05rem; font-weight:700; color:#6C63FF;">$0.00</div>
+        </div>
+        <div id="carryOverDesc" style="font-size:0.75rem; color:var(--text-secondary); text-align:right;"></div>
+      </div>
+    </div>
+
     <!-- Alerts -->
     <div id="alertsContainer" class="alerts-container" style="display:none"></div>
 

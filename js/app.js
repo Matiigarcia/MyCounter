@@ -314,6 +314,8 @@ const App = {
 
   // ===== DASHBOARD =====
   async renderDashboard() {
+    await DB.checkAndCreateCarryOver();
+
     const monthYear = Utils.getMonthYear(this.currentMonth);
     const summary = await DB.getMonthSummary(monthYear);
     const settings = DB.getSettings();
@@ -332,6 +334,23 @@ const App = {
     // Summary
     document.getElementById('totalIncome').textContent = Utils.formatMoney(summary.totalIncome);
     document.getElementById('totalExpenses').textContent = Utils.formatMoney(summary.totalExpenses);
+
+    // Carry-over
+    const carryOverRow = document.getElementById('carryOverRow');
+    if (carryOverRow) {
+      if (summary.carryOver > 0) {
+        carryOverRow.style.display = 'block';
+        document.getElementById('carryOverAmount').textContent = Utils.formatMoney(summary.carryOver);
+        const carryOverTx = summary.transactions.find(t => t.category === 'carry_over');
+        if (carryOverTx && carryOverTx.description) {
+          document.getElementById('carryOverDesc').textContent = carryOverTx.description;
+        } else {
+          document.getElementById('carryOverDesc').textContent = '';
+        }
+      } else {
+        carryOverRow.style.display = 'none';
+      }
+    }
 
     // Alerts
     Alerts.renderAlerts('alertsContainer');
@@ -985,6 +1004,7 @@ const App = {
   renderCategoryGrid() {
     const type = document.getElementById('modalType').value;
     const cats = Utils.defaultCategories.filter(c => {
+      if (c.id === 'carry_over') return false;
       if (type === 'income') return ['salary', 'freelance', 'investment', 'other'].includes(c.id);
       return !['salary', 'freelance', 'investment'].includes(c.id);
     });
